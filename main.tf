@@ -1,25 +1,93 @@
-# Custom VPC Module using AWS Provider
+# Custom EC2 Module using AWS Provider
 # Based on HashiCorp AWS Provider resources
 
-# VPC Resource
-resource "aws_vpc" "main" {
-  cidr_block           = var.vpc_cidr
-  enable_dns_hostnames = var.enable_dns_hostnames
-  enable_dns_support   = var.enable_dns_support
-  instance_tenancy     = var.instance_tenancy
-  ipv4_ipam_pool_id    = var.ipv4_ipam_pool_id
-  ipv4_netmask_length  = var.ipv4_netmask_length
-  ipv6_cidr_block      = var.ipv6_cidr_block
-  ipv6_ipam_pool_id    = var.ipv6_ipam_pool_id
-  ipv6_netmask_length  = var.ipv6_netmask_length
-  ipv6_cidr_block_network_border_group = var.ipv6_cidr_block_network_border_group
+# Data source for latest Amazon Linux 2 AMI
+data "aws_ami" "amazon_linux_2" {
+  count = var.use_latest_ami ? 1 : 0
+
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+# Data source for Ubuntu AMI
+data "aws_ami" "ubuntu" {
+  count = var.ami_type == "ubuntu" ? 1 : 0
+
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-*-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+# Data source for custom AMI
+data "aws_ami" "custom" {
+  count = var.custom_ami_id != null ? 1 : 0
+
+  owners = [var.custom_ami_owner]
+
+  filter {
+    name   = "image-id"
+    values = [var.custom_ami_id]
+  }
+}
+
+# Security Group for EC2 instances
+resource "aws_security_group" "ec2" {
+  count = var.create_security_group ? 1 : 0
+
+  name_prefix = "${var.instance_name}-sg"
+  vpc_id      = var.vpc_id
+  description = "Security group for ${var.instance_name} EC2 instance"
+
+  dynamic "ingress" {
+    for_each = var.security_group_ingress_rules
+    content {
+      description      = ingress.value.description
+      from_port        = ingress.value.from_port
+      to_port          = ingress.value.to_port
+      protocol         = ingress.value.protocol
+      cidr_blocks      = lookup(ingress.value, "cidr_blocks", null)
+      security_groups  = lookup(ingress.value, "security_groups", null)
+      self             = lookup(ingress.value, "self", null)
+    }
+  }
+
+  dynamic "egress" {
+    for_each = var.security_group_egress_rules
+    content {
+      description      = egress.value.description
+      from_port        = egress.value.from_port
+      to_port          = egress.value.to_port
+      protocol         = egress.value.protocol
+      cidr_blocks      = lookup(egress.value, "cidr_blocks", null)
+      security_groups  = lookup(egress.value, "security_groups", null)
+      self             = lookup(egress.value, "self", null)
+    }
+  }
 
   tags = merge(
     {
-      Name = var.vpc_name
+      Name = "${var.instance_name}-sg"
     },
-    var.tags,
-    var.vpc_tags
+    var.tags
   )
 
   lifecycle {
@@ -27,218 +95,466 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Internet Gateway
-resource "aws_internet_gateway" "main" {
-  count = var.create_igw ? 1 : 0
+# Key Pair for SSH access
+resource "aws_key_pair" "ec2" {
+  count = var.create_key_pair ? 1 : 0
 
-  vpc_id = aws_vpc.main.id
+  key_name_prefix = "${var.instance_name}-key"
+  public_key      = var.public_key
 
   tags = merge(
     {
-      Name = "${var.vpc_name}-igw"
+      Name = "${var.instance_name}-key"
     },
     var.tags
   )
 }
 
-# Public Subnets
-resource "aws_subnet" "public" {
-  count = length(var.public_subnets)
+# IAM Role for EC2 instance
+resource "aws_iam_role" "ec2" {
+  count = var.create_iam_role ? 1 : 0
 
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.public_subnets[count.index]
-  availability_zone       = var.availability_zones[count.index]
-  map_public_ip_on_launch = var.map_public_ip_on_launch
-  ipv6_cidr_block         = var.enable_ipv6 ? var.public_subnet_ipv6_cidrs[count.index] : null
-  assign_ipv6_address_on_creation = var.enable_ipv6
+  name_prefix = "${var.instance_name}-role"
 
-  tags = merge(
-    {
-      Name = "${var.vpc_name}-public-${var.availability_zones[count.index]}"
-      Tier = "Public"
-    },
-    var.tags,
-    var.public_subnet_tags
-  )
-}
-
-# Private Subnets
-resource "aws_subnet" "private" {
-  count = length(var.private_subnets)
-
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = var.private_subnets[count.index]
-  availability_zone = var.availability_zones[count.index]
-  ipv6_cidr_block   = var.enable_ipv6 ? var.private_subnet_ipv6_cidrs[count.index] : null
-  assign_ipv6_address_on_creation = var.enable_ipv6
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
 
   tags = merge(
     {
-      Name = "${var.vpc_name}-private-${var.availability_zones[count.index]}"
-      Tier = "Private"
-    },
-    var.tags,
-    var.private_subnet_tags
-  )
-}
-
-# Database Subnets (if specified)
-resource "aws_subnet" "database" {
-  count = length(var.database_subnets)
-
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = var.database_subnets[count.index]
-  availability_zone = var.availability_zones[count.index]
-  ipv6_cidr_block   = var.enable_ipv6 ? var.database_subnet_ipv6_cidrs[count.index] : null
-  assign_ipv6_address_on_creation = var.enable_ipv6
-
-  tags = merge(
-    {
-      Name = "${var.vpc_name}-database-${var.availability_zones[count.index]}"
-      Tier = "Database"
-    },
-    var.tags,
-    var.database_subnet_tags
-  )
-}
-
-# Route Tables
-resource "aws_route_table" "public" {
-  count = length(var.public_subnets) > 0 ? 1 : 0
-
-  vpc_id = aws_vpc.main.id
-
-  tags = merge(
-    {
-      Name = "${var.vpc_name}-public-rt"
+      Name = "${var.instance_name}-role"
     },
     var.tags
   )
 }
 
-resource "aws_route_table" "private" {
-  count = var.single_nat_gateway ? 1 : length(var.private_subnets)
+# IAM Instance Profile
+resource "aws_iam_instance_profile" "ec2" {
+  count = var.create_iam_role ? 1 : 0
 
-  vpc_id = aws_vpc.main.id
+  name_prefix = "${var.instance_name}-profile"
+  role        = aws_iam_role.ec2[0].name
 
   tags = merge(
     {
-      Name = var.single_nat_gateway ? "${var.vpc_name}-private-rt" : "${var.vpc_name}-private-rt-${var.availability_zones[count.index]}"
+      Name = "${var.instance_name}-profile"
     },
     var.tags
   )
 }
 
-# Public Route Table Association
-resource "aws_route_table_association" "public" {
-  count = length(var.public_subnets)
+# IAM Policy for EC2 role
+resource "aws_iam_role_policy" "ec2" {
+  count = var.create_iam_role && length(var.iam_policy_statements) > 0 ? 1 : 0
 
-  subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public[0].id
+  name_prefix = "${var.instance_name}-policy"
+  role        = aws_iam_role.ec2[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = var.iam_policy_statements
+  })
 }
 
-# Private Route Table Association
-resource "aws_route_table_association" "private" {
-  count = length(var.private_subnets)
+# Launch Template
+resource "aws_launch_template" "ec2" {
+  count = var.use_launch_template ? 1 : 0
 
-  subnet_id      = aws_subnet.private[count.index].id
-  route_table_id = var.single_nat_gateway ? aws_route_table.private[0].id : aws_route_table.private[count.index].id
-}
+  name_prefix = "${var.instance_name}-lt"
 
-# Public Route to Internet Gateway
-resource "aws_route" "public_internet_gateway" {
-  count = var.create_igw && length(var.public_subnets) > 0 ? 1 : 0
+  image_id      = local.ami_id
+  instance_type = var.instance_type
 
-  route_table_id         = aws_route_table.public[0].id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.main[0].id
-}
+  key_name = var.create_key_pair ? aws_key_pair.ec2[0].key_name : var.key_name
 
-# Public IPv6 Route to Internet Gateway
-resource "aws_route" "public_internet_gateway_ipv6" {
-  count = var.create_igw && var.enable_ipv6 && length(var.public_subnets) > 0 ? 1 : 0
+  vpc_security_group_ids = var.create_security_group ? [aws_security_group.ec2[0].id] : var.security_group_ids
 
-  route_table_id              = aws_route_table.public[0].id
-  destination_ipv6_cidr_block = "::/0"
-  gateway_id                  = aws_internet_gateway.main[0].id
-}
+  iam_instance_profile {
+    name = var.create_iam_role ? aws_iam_instance_profile.ec2[0].name : var.iam_instance_profile_name
+  }
 
-# NAT Gateway (if enabled)
-resource "aws_eip" "nat" {
-  count = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : length(var.private_subnets)) : 0
+  dynamic "block_device_mappings" {
+    for_each = var.block_device_mappings
+    content {
+      device_name = block_device_mappings.value.device_name
 
-  domain = "vpc"
+      ebs {
+        delete_on_termination = lookup(block_device_mappings.value.ebs, "delete_on_termination", true)
+        encrypted             = lookup(block_device_mappings.value.ebs, "encrypted", true)
+        iops                  = lookup(block_device_mappings.value.ebs, "iops", null)
+        kms_key_id            = lookup(block_device_mappings.value.ebs, "kms_key_id", null)
+        snapshot_id           = lookup(block_device_mappings.value.ebs, "snapshot_id", null)
+        throughput            = lookup(block_device_mappings.value.ebs, "throughput", null)
+        volume_size           = lookup(block_device_mappings.value.ebs, "volume_size", 20)
+        volume_type           = lookup(block_device_mappings.value.ebs, "volume_type", "gp3")
+      }
+    }
+  }
+
+  dynamic "network_interfaces" {
+    for_each = var.network_interfaces
+    content {
+      associate_public_ip_address = lookup(network_interfaces.value, "associate_public_ip_address", false)
+      delete_on_termination       = lookup(network_interfaces.value, "delete_on_termination", true)
+      description                 = lookup(network_interfaces.value, "description", null)
+      device_index                = lookup(network_interfaces.value, "device_index", 0)
+      network_interface_id        = lookup(network_interfaces.value, "network_interface_id", null)
+      private_ip_address          = lookup(network_interfaces.value, "private_ip_address", null)
+      subnet_id                   = lookup(network_interfaces.value, "subnet_id", var.subnet_id)
+      groups                      = lookup(network_interfaces.value, "groups", null)
+    }
+  }
+
+  user_data = base64encode(var.user_data)
+
+  dynamic "metadata_options" {
+    for_each = var.metadata_options != null ? [var.metadata_options] : []
+    content {
+      http_endpoint               = lookup(metadata_options.value, "http_endpoint", "enabled")
+      http_tokens                 = lookup(metadata_options.value, "http_tokens", "required")
+      http_put_response_hop_limit = lookup(metadata_options.value, "http_put_response_hop_limit", 1)
+      instance_metadata_tags      = lookup(metadata_options.value, "instance_metadata_tags", "disabled")
+    }
+  }
+
+  dynamic "monitoring" {
+    for_each = var.enable_detailed_monitoring ? [1] : []
+    content {
+      enabled = true
+    }
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = merge(
+      {
+        Name = var.instance_name
+      },
+      var.tags
+    )
+  }
+
+  tag_specifications {
+    resource_type = "volume"
+    tags = merge(
+      {
+        Name = "${var.instance_name}-volume"
+      },
+      var.tags
+    )
+  }
 
   tags = merge(
     {
-      Name = var.single_nat_gateway ? "${var.vpc_name}-nat-eip" : "${var.vpc_name}-nat-eip-${var.availability_zones[count.index]}"
+      Name = "${var.instance_name}-lt"
     },
     var.tags
   )
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
-resource "aws_nat_gateway" "main" {
-  count = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : length(var.private_subnets)) : 0
+# EC2 Instance (when not using launch template)
+resource "aws_instance" "ec2" {
+  count = var.use_launch_template ? 0 : var.instance_count
 
-  allocation_id = aws_eip.nat[count.index].id
-  subnet_id     = aws_subnet.public[var.single_nat_gateway ? 0 : count.index].id
+  ami           = local.ami_id
+  instance_type = var.instance_type
+
+  availability_zone = var.availability_zone
+  subnet_id         = var.subnet_id
+
+  key_name = var.create_key_pair ? aws_key_pair.ec2[0].key_name : var.key_name
+
+  vpc_security_group_ids = var.create_security_group ? [aws_security_group.ec2[0].id] : var.security_group_ids
+
+  iam_instance_profile = var.create_iam_role ? aws_iam_instance_profile.ec2[0].name : var.iam_instance_profile_name
+
+  associate_public_ip_address = var.associate_public_ip_address
+
+  private_ip = var.private_ip != null ? var.private_ip : null
+
+  user_data = var.user_data
+
+  user_data_replace_on_change = var.user_data_replace_on_change
+
+  dynamic "root_block_device" {
+    for_each = var.root_block_device
+    content {
+      delete_on_termination = lookup(root_block_device.value, "delete_on_termination", true)
+      encrypted             = lookup(root_block_device.value, "encrypted", true)
+      iops                  = lookup(root_block_device.value, "iops", null)
+      kms_key_id            = lookup(root_block_device.value, "kms_key_id", null)
+      volume_size           = lookup(root_block_device.value, "volume_size", 20)
+      volume_type           = lookup(root_block_device.value, "volume_type", "gp3")
+      throughput            = lookup(root_block_device.value, "throughput", null)
+    }
+  }
+
+  dynamic "ebs_block_device" {
+    for_each = var.ebs_block_device
+    content {
+      delete_on_termination = lookup(ebs_block_device.value, "delete_on_termination", true)
+      device_name           = ebs_block_device.value.device_name
+      encrypted             = lookup(ebs_block_device.value, "encrypted", true)
+      iops                  = lookup(ebs_block_device.value, "iops", null)
+      kms_key_id            = lookup(ebs_block_device.value, "kms_key_id", null)
+      snapshot_id           = lookup(ebs_block_device.value, "snapshot_id", null)
+      volume_size           = lookup(ebs_block_device.value, "volume_size", null)
+      volume_type           = lookup(ebs_block_device.value, "volume_type", "gp3")
+      throughput            = lookup(ebs_block_device.value, "throughput", null)
+    }
+  }
+
+  dynamic "ephemeral_block_device" {
+    for_each = var.ephemeral_block_device
+    content {
+      device_name  = ephemeral_block_device.value.device_name
+      no_device    = lookup(ephemeral_block_device.value, "no_device", null)
+      virtual_name = lookup(ephemeral_block_device.value, "virtual_name", null)
+    }
+  }
+
+  monitoring = var.enable_detailed_monitoring
+
+  dynamic "metadata_options" {
+    for_each = var.metadata_options != null ? [var.metadata_options] : []
+    content {
+      http_endpoint               = lookup(metadata_options.value, "http_endpoint", "enabled")
+      http_tokens                 = lookup(metadata_options.value, "http_tokens", "required")
+      http_put_response_hop_limit = lookup(metadata_options.value, "http_put_response_hop_limit", 1)
+      instance_metadata_tags      = lookup(metadata_options.value, "instance_metadata_tags", "disabled")
+    }
+  }
+
+  dynamic "network_interface" {
+    for_each = var.network_interfaces
+    content {
+      device_index          = lookup(network_interface.value, "device_index", 0)
+      network_interface_id  = lookup(network_interface.value, "network_interface_id", null)
+      delete_on_termination = lookup(network_interface.value, "delete_on_termination", true)
+    }
+  }
+
+  source_dest_check = var.source_dest_check
+
+  disable_api_termination = var.disable_api_termination
+
+  instance_initiated_shutdown_behavior = var.instance_initiated_shutdown_behavior
+
+  placement_group = var.placement_group
+
+  tenancy = var.tenancy
+
+  host_id = var.host_id
+
+  cpu_core_count = var.cpu_core_count
+
+  cpu_threads_per_core = var.cpu_threads_per_core
+
+  hibernation = var.hibernation
+
+  capacity_reservation_specification {
+    capacity_reservation_preference = var.capacity_reservation_preference
+  }
+
+  dynamic "capacity_reservation_specification" {
+    for_each = var.capacity_reservation_target != null ? [var.capacity_reservation_target] : []
+    content {
+      capacity_reservation_target {
+        capacity_reservation_id = capacity_reservation_specification.value.capacity_reservation_id
+      }
+    }
+  }
 
   tags = merge(
     {
-      Name = var.single_nat_gateway ? "${var.vpc_name}-nat" : "${var.vpc_name}-nat-${var.availability_zones[count.index]}"
+      Name = var.instance_count > 1 ? "${var.instance_name}-${count.index + 1}" : var.instance_name
     },
     var.tags
   )
 
-  depends_on = [aws_internet_gateway.main]
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
-# Private Route to NAT Gateway
-resource "aws_route" "private_nat_gateway" {
-  count = var.enable_nat_gateway ? length(var.private_subnets) : 0
+# Auto Scaling Group
+resource "aws_autoscaling_group" "ec2" {
+  count = var.create_autoscaling_group ? 1 : 0
 
-  route_table_id         = var.single_nat_gateway ? aws_route_table.private[0].id : aws_route_table.private[count.index].id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = var.single_nat_gateway ? aws_nat_gateway.main[0].id : aws_nat_gateway.main[count.index].id
+  name_prefix = "${var.instance_name}-asg"
+
+  desired_capacity          = var.asg_desired_capacity
+  max_size                  = var.asg_max_size
+  min_size                  = var.asg_min_size
+  health_check_grace_period = var.asg_health_check_grace_period
+  health_check_type         = var.asg_health_check_type
+  vpc_zone_identifier       = var.asg_subnet_ids
+
+  launch_template {
+    id      = aws_launch_template.ec2[0].id
+    version = "$Latest"
+  }
+
+  dynamic "tag" {
+    for_each = var.asg_tags
+    content {
+      key                 = tag.key
+      value               = tag.value
+      propagate_at_launch = lookup(tag, "propagate_at_launch", true)
+    }
+  }
+
+  dynamic "tag" {
+    for_each = var.tags
+    content {
+      key                 = tag.key
+      value               = tag.value
+      propagate_at_launch = true
+    }
+  }
+
+  target_group_arns = var.target_group_arns
+
+  load_balancers = var.load_balancers
+
+  placement_group = var.placement_group
+
+  service_linked_role_arn = var.service_linked_role_arn
+
+  max_instance_lifetime = var.max_instance_lifetime
+
+  capacity_rebalance = var.capacity_rebalance
+
+  warm_pool {
+    pool_state                  = var.warm_pool_state
+    min_size                    = var.warm_pool_min_size
+    max_group_prepared_capacity = var.warm_pool_max_group_prepared_capacity
+  }
+
+  dynamic "mixed_instances_policy" {
+    for_each = var.mixed_instances_policy != null ? [var.mixed_instances_policy] : []
+    content {
+      instances_distribution {
+        on_demand_base_capacity                  = lookup(mixed_instances_policy.value.instances_distribution, "on_demand_base_capacity", 0)
+        on_demand_percentage_above_base_capacity = lookup(mixed_instances_policy.value.instances_distribution, "on_demand_percentage_above_base_capacity", 100)
+        on_demand_allocation_strategy            = lookup(mixed_instances_policy.value.instances_distribution, "on_demand_allocation_strategy", null)
+        spot_allocation_strategy                 = lookup(mixed_instances_policy.value.instances_distribution, "spot_allocation_strategy", null)
+        spot_instance_pools                      = lookup(mixed_instances_policy.value.instances_distribution, "spot_instance_pools", null)
+        spot_max_price                           = lookup(mixed_instances_policy.value.instances_distribution, "spot_max_price", null)
+      }
+
+      launch_template {
+        launch_template_specification {
+          launch_template_id   = aws_launch_template.ec2[0].id
+          launch_template_name = aws_launch_template.ec2[0].name
+          version              = "$Latest"
+        }
+
+        dynamic "override" {
+          for_each = lookup(mixed_instances_policy.value, "override", [])
+          content {
+            instance_type     = override.value.instance_type
+            weighted_capacity = lookup(override.value, "weighted_capacity", null)
+          }
+        }
+      }
+    }
+  }
+
+  dynamic "instance_refresh" {
+    for_each = var.instance_refresh != null ? [var.instance_refresh] : []
+    content {
+      strategy = instance_refresh.value.strategy
+      preferences {
+        min_healthy_percentage = lookup(instance_refresh.value.preferences, "min_healthy_percentage", null)
+        max_healthy_percentage = lookup(instance_refresh.value.preferences, "max_healthy_percentage", null)
+        instance_warmup        = lookup(instance_refresh.value.preferences, "instance_warmup", null)
+        checkpoint_percentages = lookup(instance_refresh.value.preferences, "checkpoint_percentages", null)
+        checkpoint_delay       = lookup(instance_refresh.value.preferences, "checkpoint_delay", null)
+        auto_rollback          = lookup(instance_refresh.value.preferences, "auto_rollback", null)
+        scale_in_protected_instances = lookup(instance_refresh.value.preferences, "scale_in_protected_instances", null)
+        standby_instances      = lookup(instance_refresh.value.preferences, "standby_instances", null)
+      }
+    }
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
-# Default Security Group
-resource "aws_security_group" "default" {
-  count = var.create_default_security_group ? 1 : 0
+# Auto Scaling Policy
+resource "aws_autoscaling_policy" "ec2" {
+  for_each = var.create_autoscaling_group && length(var.asg_policies) > 0 ? var.asg_policies : {}
 
-  name_prefix = "${var.vpc_name}-default-sg"
-  vpc_id      = aws_vpc.main.id
+  name                   = each.value.name
+  autoscaling_group_name = aws_autoscaling_group.ec2[0].name
+  adjustment_type        = each.value.adjustment_type
+  scaling_adjustment     = each.value.scaling_adjustment
+  cooldown               = lookup(each.value, "cooldown", null)
+  metric_aggregation_type = lookup(each.value, "metric_aggregation_type", null)
+  min_adjustment_magnitude = lookup(each.value, "min_adjustment_magnitude", null)
 
-  tags = merge(
-    {
-      Name = "${var.vpc_name}-default-sg"
-    },
-    var.tags
+  dynamic "step_adjustment" {
+    for_each = lookup(each.value, "step_adjustment", [])
+    content {
+      metric_interval_lower_bound = lookup(step_adjustment.value, "metric_interval_lower_bound", null)
+      metric_interval_upper_bound = lookup(step_adjustment.value, "metric_interval_upper_bound", null)
+      scaling_adjustment          = step_adjustment.value.scaling_adjustment
+    }
+  }
+
+  dynamic "target_tracking_configuration" {
+    for_each = lookup(each.value, "target_tracking_configuration", null) != null ? [each.value.target_tracking_configuration] : []
+    content {
+      predefined_metric_specification {
+        predefined_metric_type = target_tracking_configuration.value.predefined_metric_type
+        resource_label         = lookup(target_tracking_configuration.value, "resource_label", null)
+      }
+      target_value = target_tracking_configuration.value.target_value
+      disable_scale_in = lookup(target_tracking_configuration.value, "disable_scale_in", false)
+    }
+  }
+}
+
+# CloudWatch Alarm for Auto Scaling
+resource "aws_cloudwatch_metric_alarm" "ec2" {
+  for_each = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? var.cloudwatch_alarms : {}
+
+  alarm_name          = each.value.alarm_name
+  comparison_operator = each.value.comparison_operator
+  evaluation_periods  = each.value.evaluation_periods
+  metric_name         = each.value.metric_name
+  namespace           = each.value.namespace
+  period              = each.value.period
+  statistic           = each.value.statistic
+  threshold           = each.value.threshold
+  alarm_description   = lookup(each.value, "alarm_description", null)
+  alarm_actions       = lookup(each.value, "alarm_actions", null)
+  ok_actions          = lookup(each.value, "ok_actions", null)
+  insufficient_data_actions = lookup(each.value, "insufficient_data_actions", null)
+
+  dimensions = lookup(each.value, "dimensions", null)
+}
+
+# Local values for AMI selection
+locals {
+  ami_id = var.custom_ami_id != null ? data.aws_ami.custom[0].id : (
+    var.ami_type == "ubuntu" ? data.aws_ami.ubuntu[0].id : (
+      var.use_latest_ami ? data.aws_ami.amazon_linux_2[0].id : var.ami_id
+    )
   )
-}
-
-# Default Security Group Ingress Rules
-resource "aws_security_group_rule" "default_ingress" {
-  count = var.create_default_security_group ? length(var.default_security_group_ingress_rules) : 0
-
-  security_group_id = aws_security_group.default[0].id
-  type              = "ingress"
-  from_port         = var.default_security_group_ingress_rules[count.index].from_port
-  to_port           = var.default_security_group_ingress_rules[count.index].to_port
-  protocol          = var.default_security_group_ingress_rules[count.index].protocol
-  cidr_blocks       = var.default_security_group_ingress_rules[count.index].cidr_blocks
-  description       = var.default_security_group_ingress_rules[count.index].description
-}
-
-# Default Security Group Egress Rules
-resource "aws_security_group_rule" "default_egress" {
-  count = var.create_default_security_group ? length(var.default_security_group_egress_rules) : 0
-
-  security_group_id = aws_security_group.default[0].id
-  type              = "egress"
-  from_port         = var.default_security_group_egress_rules[count.index].from_port
-  to_port           = var.default_security_group_egress_rules[count.index].to_port
-  protocol          = var.default_security_group_egress_rules[count.index].protocol
-  cidr_blocks       = var.default_security_group_egress_rules[count.index].cidr_blocks
-  description       = var.default_security_group_egress_rules[count.index].description
 } 

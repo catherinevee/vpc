@@ -29,23 +29,18 @@ override.tf.json
 # Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
 # example: *tfplan*
 *.tfplan
+*.tfplan.*
 
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
 
-# Ignore lock files (optional - you may want to commit these)
-# .terraform.lock.hcl
-
-# Ignore any local environment files
-.env
-.env.local
-
-# IDE files
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
 # OS generated files
 .DS_Store
@@ -54,4 +49,40 @@ terraform.rc
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db 
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Backup files
+*.backup
+*.bak
+
+# Test coverage reports
+coverage/
+*.coverage
+
+# Node modules (if using any Node.js tools)
+node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+
+# AWS credentials (never commit these!)
+.aws/
+credentials
+.aws/credentials
+
+# Terraform lock files (optional - some teams prefer to commit these)
+# .terraform.lock.hcl 
