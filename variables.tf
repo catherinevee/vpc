@@ -33,6 +33,114 @@ variable "enable_dns_support" {
   default     = true
 }
 
+variable "instance_tenancy" {
+  description = "A tenancy option for instances launched into the VPC"
+  type        = string
+  default     = "default"
+
+  validation {
+    condition     = contains(["default", "dedicated"], var.instance_tenancy)
+    error_message = "Instance tenancy must be either 'default' or 'dedicated'."
+  }
+}
+
+variable "ipv4_ipam_pool_id" {
+  description = "The ID of an IPv4 IPAM pool you want to use for allocating this VPC's CIDR"
+  type        = string
+  default     = null
+}
+
+variable "ipv4_netmask_length" {
+  description = "The netmask length of the IPv4 CIDR you want to allocate to this VPC"
+  type        = number
+  default     = null
+
+  validation {
+    condition     = var.ipv4_netmask_length == null || (var.ipv4_netmask_length >= 8 && var.ipv4_netmask_length <= 32)
+    error_message = "IPv4 netmask length must be between 8 and 32."
+  }
+}
+
+variable "ipv6_cidr_block" {
+  description = "The IPv6 CIDR block for the VPC"
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.ipv6_cidr_block == null || can(cidrhost(var.ipv6_cidr_block, 0))
+    error_message = "IPv6 CIDR block must be a valid CIDR notation."
+  }
+}
+
+variable "ipv6_ipam_pool_id" {
+  description = "The ID of an IPv6 IPAM pool you want to use for allocating this VPC's CIDR"
+  type        = string
+  default     = null
+}
+
+variable "ipv6_netmask_length" {
+  description = "The netmask length of the IPv6 CIDR you want to allocate to this VPC"
+  type        = number
+  default     = null
+
+  validation {
+    condition     = var.ipv6_netmask_length == null || (var.ipv6_netmask_length >= 32 && var.ipv6_netmask_length <= 128)
+    error_message = "IPv6 netmask length must be between 32 and 128."
+  }
+}
+
+variable "ipv6_cidr_block_network_border_group" {
+  description = "The name of the location from which we advertise the IPV6 CIDR block"
+  type        = string
+  default     = null
+}
+
+# IPv6 Configuration
+variable "enable_ipv6" {
+  description = "Should be true to enable IPv6 support in the VPC and subnets"
+  type        = bool
+  default     = false
+}
+
+variable "public_subnet_ipv6_cidrs" {
+  description = "List of IPv6 CIDR blocks for public subnets"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for cidr in var.public_subnet_ipv6_cidrs : can(cidrhost(cidr, 0))
+    ])
+    error_message = "All public subnet IPv6 CIDR blocks must be valid CIDR notation."
+  }
+}
+
+variable "private_subnet_ipv6_cidrs" {
+  description = "List of IPv6 CIDR blocks for private subnets"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for cidr in var.private_subnet_ipv6_cidrs : can(cidrhost(cidr, 0))
+    ])
+    error_message = "All private subnet IPv6 CIDR blocks must be valid CIDR notation."
+  }
+}
+
+variable "database_subnet_ipv6_cidrs" {
+  description = "List of IPv6 CIDR blocks for database subnets"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for cidr in var.database_subnet_ipv6_cidrs : can(cidrhost(cidr, 0))
+    ])
+    error_message = "All database subnet IPv6 CIDR blocks must be valid CIDR notation."
+  }
+}
+
 # Subnet Configuration
 variable "availability_zones" {
   description = "List of availability zones"

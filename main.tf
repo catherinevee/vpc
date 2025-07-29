@@ -6,6 +6,13 @@ resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = var.enable_dns_hostnames
   enable_dns_support   = var.enable_dns_support
+  instance_tenancy     = var.instance_tenancy
+  ipv4_ipam_pool_id    = var.ipv4_ipam_pool_id
+  ipv4_netmask_length  = var.ipv4_netmask_length
+  ipv6_cidr_block      = var.ipv6_cidr_block
+  ipv6_ipam_pool_id    = var.ipv6_ipam_pool_id
+  ipv6_netmask_length  = var.ipv6_netmask_length
+  ipv6_cidr_block_network_border_group = var.ipv6_cidr_block_network_border_group
 
   tags = merge(
     {
@@ -14,6 +21,10 @@ resource "aws_vpc" "main" {
     var.tags,
     var.vpc_tags
   )
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Internet Gateway
@@ -38,6 +49,8 @@ resource "aws_subnet" "public" {
   cidr_block              = var.public_subnets[count.index]
   availability_zone       = var.availability_zones[count.index]
   map_public_ip_on_launch = var.map_public_ip_on_launch
+  ipv6_cidr_block         = var.enable_ipv6 ? var.public_subnet_ipv6_cidrs[count.index] : null
+  assign_ipv6_address_on_creation = var.enable_ipv6
 
   tags = merge(
     {
@@ -56,6 +69,8 @@ resource "aws_subnet" "private" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = var.private_subnets[count.index]
   availability_zone = var.availability_zones[count.index]
+  ipv6_cidr_block   = var.enable_ipv6 ? var.private_subnet_ipv6_cidrs[count.index] : null
+  assign_ipv6_address_on_creation = var.enable_ipv6
 
   tags = merge(
     {
@@ -74,6 +89,8 @@ resource "aws_subnet" "database" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = var.database_subnets[count.index]
   availability_zone = var.availability_zones[count.index]
+  ipv6_cidr_block   = var.enable_ipv6 ? var.database_subnet_ipv6_cidrs[count.index] : null
+  assign_ipv6_address_on_creation = var.enable_ipv6
 
   tags = merge(
     {
@@ -135,6 +152,15 @@ resource "aws_route" "public_internet_gateway" {
   route_table_id         = aws_route_table.public[0].id
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.main[0].id
+}
+
+# Public IPv6 Route to Internet Gateway
+resource "aws_route" "public_internet_gateway_ipv6" {
+  count = var.create_igw && var.enable_ipv6 && length(var.public_subnets) > 0 ? 1 : 0
+
+  route_table_id              = aws_route_table.public[0].id
+  destination_ipv6_cidr_block = "::/0"
+  gateway_id                  = aws_internet_gateway.main[0].id
 }
 
 # NAT Gateway (if enabled)

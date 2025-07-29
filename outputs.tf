@@ -89,4 +89,35 @@ output "availability_zones" {
 output "vpc_main_route_table_id" {
   description = "The ID of the main route table associated with this VPC"
   value       = aws_vpc.main.main_route_table_id
+}
+
+# IPv6 Outputs
+output "vpc_ipv6_cidr_block" {
+  description = "The IPv6 CIDR block of the VPC"
+  value       = aws_vpc.main.ipv6_cidr_block
+}
+
+output "vpc_ipv6_cidr_block_network_border_group" {
+  description = "The IPv6 CIDR block network border group"
+  value       = aws_vpc.main.ipv6_cidr_block_network_border_group
+}
+
+output "vpc_ipv6_association_id" {
+  description = "The association ID for the IPv6 CIDR block"
+  value       = aws_vpc.main.ipv6_association_id
+}
+
+output "public_subnet_ipv6_cidr_blocks" {
+  description = "List of IPv6 CIDR blocks of public subnets"
+  value       = aws_subnet.public[*].ipv6_cidr_block
+}
+
+output "private_subnet_ipv6_cidr_blocks" {
+  description = "List of IPv6 CIDR blocks of private subnets"
+  value       = aws_subnet.private[*].ipv6_cidr_block
+}
+
+output "database_subnet_ipv6_cidr_blocks" {
+  description = "List of IPv6 CIDR blocks of database subnets"
+  value       = aws_subnet.database[*].ipv6_cidr_block
 } 

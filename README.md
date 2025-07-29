@@ -4,7 +4,7 @@ A comprehensive Terraform module for creating AWS VPC infrastructure using the [
 
 ## Features
 
-- **VPC Creation** with customizable CIDR blocks
+- **VPC Creation** with customizable CIDR blocks and advanced options
 - **Internet Gateway** for public subnets
 - **Public Subnets** with auto-assigned public IPs
 - **Private Subnets** with NAT Gateway connectivity
@@ -13,6 +13,9 @@ A comprehensive Terraform module for creating AWS VPC infrastructure using the [
 - **NAT Gateways** for private subnet internet access
 - **Security Groups** with configurable rules
 - **Comprehensive Tagging** support
+- **IPv6 Support** with dual-stack networking
+- **Instance Tenancy** options (default/dedicated)
+- **IPAM Integration** for IP address management
 - **Input Validation** with detailed error messages
 - **Linting & Security Scanning** with TFLint and Checkov
 - **CI/CD Integration** with GitHub Actions
@@ -108,6 +111,37 @@ module "vpc" {
 }
 ```
 
+### IPv6 Enabled VPC
+
+```hcl
+module "vpc" {
+  source = "./vpc"
+
+  vpc_name = "ipv6-vpc"
+  vpc_cidr = "10.0.0.0/16"
+  
+  # Enable IPv6
+  enable_ipv6 = true
+  ipv6_cidr_block = "2001:db8::/56"
+
+  availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  public_subnets     = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  private_subnets    = ["10.0.11.0/24", "10.0.12.0/24", "10.0.13.0/24"]
+  
+  # IPv6 CIDR blocks for subnets
+  public_subnet_ipv6_cidrs  = ["2001:db8::/64", "2001:db8:0:1::/64", "2001:db8:0:2::/64"]
+  private_subnet_ipv6_cidrs = ["2001:db8:0:10::/64", "2001:db8:0:11::/64", "2001:db8:0:12::/64"]
+
+  enable_nat_gateway = true
+  create_igw         = true
+
+  tags = {
+    Environment = "production"
+    Project     = "dual-stack"
+  }
+}
+```
+
 ## Development Workflow
 
 ### Using Makefile
@@ -170,7 +204,18 @@ terraform destroy
 | vpc_name | Name of the VPC | `string` | `"custom-vpc"` | no |
 | enable_dns_hostnames | Should be true to enable DNS hostnames in the VPC | `bool` | `true` | no |
 | enable_dns_support | Should be true to enable DNS support in the VPC | `bool` | `true` | no |
-| availability_zones | List of availability zones | `list(string)` | `["us-west-2a", "us-west-2b", "us-west-2c"]` | no |
+| instance_tenancy | A tenancy option for instances launched into the VPC | `string` | `"default"` | no |
+| ipv4_ipam_pool_id | The ID of an IPv4 IPAM pool for allocating VPC CIDR | `string` | `null` | no |
+| ipv4_netmask_length | The netmask length of the IPv4 CIDR | `number` | `null` | no |
+| ipv6_cidr_block | The IPv6 CIDR block for the VPC | `string` | `null` | no |
+| ipv6_ipam_pool_id | The ID of an IPv6 IPAM pool for allocating VPC CIDR | `string` | `null` | no |
+| ipv6_netmask_length | The netmask length of the IPv6 CIDR | `number` | `null` | no |
+| ipv6_cidr_block_network_border_group | The location from which we advertise the IPv6 CIDR | `string` | `null` | no |
+| enable_ipv6 | Should be true to enable IPv6 support in the VPC and subnets | `bool` | `false` | no |
+| public_subnet_ipv6_cidrs | List of IPv6 CIDR blocks for public subnets | `list(string)` | `[]` | no |
+| private_subnet_ipv6_cidrs | List of IPv6 CIDR blocks for private subnets | `list(string)` | `[]` | no |
+| database_subnet_ipv6_cidrs | List of IPv6 CIDR blocks for database subnets | `list(string)` | `[]` | no |
+| availability_zones | List of availability zones | `list(string)` | `["us-east-1a", "us-east-1b", "us-east-1c"]` | no |
 | public_subnets | List of public subnet CIDR blocks | `list(string)` | `["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]` | no |
 | private_subnets | List of private subnet CIDR blocks | `list(string)` | `["10.0.11.0/24", "10.0.12.0/24", "10.0.13.0/24"]` | no |
 | database_subnets | List of database subnet CIDR blocks | `list(string)` | `[]` | no |
@@ -208,6 +253,12 @@ terraform destroy
 | default_security_group_id | The ID of the security group created by default on VPC creation |
 | availability_zones | List of availability zones used |
 | vpc_main_route_table_id | The ID of the main route table associated with this VPC |
+| vpc_ipv6_cidr_block | The IPv6 CIDR block of the VPC |
+| vpc_ipv6_cidr_block_network_border_group | The IPv6 CIDR block network border group |
+| vpc_ipv6_association_id | The association ID for the IPv6 CIDR block |
+| public_subnet_ipv6_cidr_blocks | List of IPv6 CIDR blocks of public subnets |
+| private_subnet_ipv6_cidr_blocks | List of IPv6 CIDR blocks of private subnets |
+| database_subnet_ipv6_cidr_blocks | List of IPv6 CIDR blocks of database subnets |
 
 ## CI/CD Integration
 
