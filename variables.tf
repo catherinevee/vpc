@@ -1,918 +1,395 @@
-# VPC Configuration
-variable "vpc_cidr" {
-  description = "CIDR block for VPC"
+# ==============================================================================
+# General Variables
+# ==============================================================================
+
+variable "name" {
+  description = "Name prefix for all resources"
   type        = string
-  default     = "10.0.0.0/16"
-
   validation {
-    condition     = can(cidrhost(var.vpc_cidr, 0))
-    error_message = "VPC CIDR block must be a valid CIDR notation."
+    condition     = can(regex("^[a-zA-Z][a-zA-Z0-9-]*$", var.name))
+    error_message = "Name must start with a letter and contain only alphanumeric characters and hyphens."
   }
 }
 
-variable "vpc_name" {
-  description = "Name of the VPC"
+variable "environment" {
+  description = "Environment name (e.g., dev, staging, prod)"
   type        = string
-  default     = "custom-vpc"
-
+  default     = "dev"
   validation {
-    condition     = length(var.vpc_name) > 0 && length(var.vpc_name) <= 255
-    error_message = "VPC name must be between 1 and 255 characters."
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be one of: dev, staging, prod."
   }
 }
 
-variable "enable_dns_hostnames" {
-  description = "Should be true to enable DNS hostnames in the VPC"
-  type        = bool
-  default     = true
-}
-
-variable "enable_dns_support" {
-  description = "Should be true to enable DNS support in the VPC"
-  type        = bool
-  default     = true
-}
-
-variable "instance_tenancy" {
-  description = "A tenancy option for instances launched into the VPC"
-  type        = string
-  default     = "default"
-
-  validation {
-    condition     = contains(["default", "dedicated"], var.instance_tenancy)
-    error_message = "Instance tenancy must be either 'default' or 'dedicated'."
-  }
-}
-
-variable "ipv4_ipam_pool_id" {
-  description = "The ID of an IPv4 IPAM pool you want to use for allocating this VPC's CIDR"
-  type        = string
-  default     = null
-}
-
-variable "ipv4_netmask_length" {
-  description = "The netmask length of the IPv4 CIDR you want to allocate to this VPC"
-  type        = number
-  default     = null
-
-  validation {
-    condition     = var.ipv4_netmask_length == null || (var.ipv4_netmask_length >= 8 && var.ipv4_netmask_length <= 32)
-    error_message = "IPv4 netmask length must be between 8 and 32."
-  }
-}
-
-variable "ipv6_cidr_block" {
-  description = "The IPv6 CIDR block for the VPC"
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.ipv6_cidr_block == null || can(cidrhost(var.ipv6_cidr_block, 0))
-    error_message = "IPv6 CIDR block must be a valid CIDR notation."
-  }
-}
-
-variable "ipv6_ipam_pool_id" {
-  description = "The ID of an IPv6 IPAM pool you want to use for allocating this VPC's CIDR"
-  type        = string
-  default     = null
-}
-
-variable "ipv6_netmask_length" {
-  description = "The netmask length of the IPv6 CIDR you want to allocate to this VPC"
-  type        = number
-  default     = null
-
-  validation {
-    condition     = var.ipv6_netmask_length == null || (var.ipv6_netmask_length >= 32 && var.ipv6_netmask_length <= 128)
-    error_message = "IPv6 netmask length must be between 32 and 128."
-  }
-}
-
-variable "ipv6_cidr_block_network_border_group" {
-  description = "The name of the location from which we advertise the IPV6 CIDR block"
-  type        = string
-  default     = null
-}
-
-# IPv6 Configuration
-variable "enable_ipv6" {
-  description = "Should be true to enable IPv6 support in the VPC and subnets"
-  type        = bool
-  default     = false
-}
-
-variable "public_subnet_ipv6_cidrs" {
-  description = "List of IPv6 CIDR blocks for public subnets"
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition = alltrue([
-      for cidr in var.public_subnet_ipv6_cidrs : can(cidrhost(cidr, 0))
-    ])
-    error_message = "All public subnet IPv6 CIDR blocks must be valid CIDR notation."
-  }
-}
-
-variable "private_subnet_ipv6_cidrs" {
-  description = "List of IPv6 CIDR blocks for private subnets"
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition = alltrue([
-      for cidr in var.private_subnet_ipv6_cidrs : can(cidrhost(cidr, 0))
-    ])
-    error_message = "All private subnet IPv6 CIDR blocks must be valid CIDR notation."
-  }
-}
-
-variable "database_subnet_ipv6_cidrs" {
-  description = "List of IPv6 CIDR blocks for database subnets"
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition = alltrue([
-      for cidr in var.database_subnet_ipv6_cidrs : can(cidrhost(cidr, 0))
-    ])
-    error_message = "All database subnet IPv6 CIDR blocks must be valid CIDR notation."
-  }
-}
-
-# Subnet Configuration
-variable "availability_zones" {
-  description = "List of availability zones"
-  type        = list(string)
-  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
-
-  validation {
-    condition     = length(var.availability_zones) > 0 && length(var.availability_zones) <= 6
-    error_message = "Availability zones must be between 1 and 6 zones."
-  }
-}
-
-variable "public_subnets" {
-  description = "List of public subnet CIDR blocks"
-  type        = list(string)
-  default     = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-
-  validation {
-    condition = alltrue([
-      for subnet in var.public_subnets : can(cidrhost(subnet, 0))
-    ])
-    error_message = "All public subnet CIDR blocks must be valid CIDR notation."
-  }
-}
-
-variable "private_subnets" {
-  description = "List of private subnet CIDR blocks"
-  type        = list(string)
-  default     = ["10.0.11.0/24", "10.0.12.0/24", "10.0.13.0/24"]
-
-  validation {
-    condition = alltrue([
-      for subnet in var.private_subnets : can(cidrhost(subnet, 0))
-    ])
-    error_message = "All private subnet CIDR blocks must be valid CIDR notation."
-  }
-}
-
-variable "database_subnets" {
-  description = "List of database subnet CIDR blocks"
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition = alltrue([
-      for subnet in var.database_subnets : can(cidrhost(subnet, 0))
-    ])
-    error_message = "All database subnet CIDR blocks must be valid CIDR notation."
-  }
-}
-
-variable "map_public_ip_on_launch" {
-  description = "Should be true if you want to auto-assign public IP on launch"
-  type        = bool
-  default     = true
-}
-
-# Internet Gateway Configuration
-variable "create_igw" {
-  description = "Controls if an Internet Gateway is created for public subnets"
-  type        = bool
-  default     = true
-}
-
-# NAT Gateway Configuration
-variable "enable_nat_gateway" {
-  description = "Should be true if you want to provision NAT Gateways for each of your private networks"
-  type        = bool
-  default     = true
-}
-
-variable "single_nat_gateway" {
-  description = "Should be true if you want to provision a single shared NAT Gateway across all private networks"
-  type        = bool
-  default     = false
-}
-
-# Security Group Configuration
-variable "create_default_security_group" {
-  description = "Controls if default security group should be created"
-  type        = bool
-  default     = true
-}
-
-variable "default_security_group_ingress_rules" {
-  description = "List of ingress rules for the default security group"
-  type = list(object({
-    from_port   = number
-    to_port     = number
-    protocol    = string
-    cidr_blocks = list(string)
-    description = string
-  }))
-  default = [
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      cidr_blocks = ["0.0.0.0/0"]
-      description = "Allow all traffic within VPC"
-    }
-  ]
-}
-
-variable "default_security_group_egress_rules" {
-  description = "List of egress rules for the default security group"
-  type = list(object({
-    from_port   = number
-    to_port     = number
-    protocol    = string
-    cidr_blocks = list(string)
-    description = string
-  }))
-  default = [
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      cidr_blocks = ["0.0.0.0/0"]
-      description = "Allow all outbound traffic"
-    }
-  ]
-}
-
-# Tags
 variable "tags" {
-  description = "A map of tags to add to all resources"
+  description = "Common tags to apply to all resources"
   type        = map(string)
   default     = {}
+}
 
+# ==============================================================================
+# VPC Variables
+# ==============================================================================
+
+variable "vpc_config" {
+  description = "VPC configuration"
+  type = object({
+    cidr_block           = string
+    enable_dns_hostnames = optional(bool, true)
+    enable_dns_support   = optional(bool, true)
+    enable_nat_gateway   = optional(bool, true)
+    single_nat_gateway   = optional(bool, false)
+    one_nat_gateway_per_az = optional(bool, false)
+    enable_vpn_gateway   = optional(bool, false)
+    enable_flow_log      = optional(bool, false)
+    flow_log_retention_in_days = optional(number, 7)
+  })
   validation {
-    condition = alltrue([
-      for key, value in var.tags : length(key) > 0 && length(key) <= 128
-    ])
-    error_message = "Tag keys must be between 1 and 128 characters."
+    condition     = can(cidrhost(var.vpc_config.cidr_block, 0))
+    error_message = "VPC CIDR block must be a valid IPv4 CIDR."
   }
 }
 
-variable "vpc_tags" {
-  description = "Additional tags for the VPC"
-  type        = map(string)
-  default     = {}
+variable "subnet_config" {
+  description = "Subnet configuration"
+  type = object({
+    public_subnets  = list(string)
+    private_subnets = list(string)
+    database_subnets = optional(list(string), [])
+    elasticache_subnets = optional(list(string), [])
+    redshift_subnets = optional(list(string), [])
+    intra_subnets = optional(list(string), [])
+    azs             = list(string)
+  })
+  validation {
+    condition = alltrue([
+      for subnet in var.subnet_config.public_subnets : can(cidrhost(subnet, 0))
+    ])
+    error_message = "All public subnet CIDR blocks must be valid IPv4 CIDRs."
+  }
+  validation {
+    condition = alltrue([
+      for subnet in var.subnet_config.private_subnets : can(cidrhost(subnet, 0))
+    ])
+    error_message = "All private subnet CIDR blocks must be valid IPv4 CIDRs."
+  }
 }
 
 variable "public_subnet_tags" {
-  description = "Additional tags for the public subnets"
+  description = "Additional tags for public subnets"
   type        = map(string)
   default     = {}
 }
 
 variable "private_subnet_tags" {
-  description = "Additional tags for the private subnets"
+  description = "Additional tags for private subnets"
   type        = map(string)
   default     = {}
 }
 
-variable "database_subnet_tags" {
-  description = "Additional tags for the database subnets"
-  type        = map(string)
-  default     = {}
-} 
-
-# EC2 Instance Configuration
-variable "instance_name" {
-  description = "Name of the EC2 instance"
-  type        = string
-  default     = "ec2-instance"
-
-  validation {
-    condition     = length(var.instance_name) > 0 && length(var.instance_name) <= 255
-    error_message = "Instance name must be between 1 and 255 characters."
-  }
-}
-
-variable "instance_count" {
-  description = "Number of EC2 instances to create"
-  type        = number
-  default     = 1
-
-  validation {
-    condition     = var.instance_count > 0 && var.instance_count <= 100
-    error_message = "Instance count must be between 1 and 100."
-  }
-}
-
-variable "instance_type" {
-  description = "EC2 instance type"
-  type        = string
-  default     = "t3.micro"
-
-  validation {
-    condition     = can(regex("^[a-z][0-9]+\\.[a-z0-9]+$", var.instance_type))
-    error_message = "Instance type must be a valid AWS instance type."
-  }
-}
-
-# AMI Configuration
-variable "ami_id" {
-  description = "AMI ID to use for the EC2 instance"
-  type        = string
-  default     = null
-}
-
-variable "use_latest_ami" {
-  description = "Whether to use the latest Amazon Linux 2 AMI"
-  type        = bool
-  default     = true
-}
-
-variable "ami_type" {
-  description = "Type of AMI to use (amazon_linux_2, ubuntu, custom)"
-  type        = string
-  default     = "amazon_linux_2"
-
-  validation {
-    condition     = contains(["amazon_linux_2", "ubuntu", "custom"], var.ami_type)
-    error_message = "AMI type must be one of: amazon_linux_2, ubuntu, custom."
-  }
-}
-
-variable "custom_ami_id" {
-  description = "Custom AMI ID to use"
-  type        = string
-  default     = null
-}
-
-variable "custom_ami_owner" {
-  description = "Owner of the custom AMI"
-  type        = string
-  default     = "self"
-}
-
-# Network Configuration
-variable "vpc_id" {
-  description = "VPC ID where the EC2 instance will be created"
-  type        = string
-  default     = null
-}
-
-variable "subnet_id" {
-  description = "Subnet ID where the EC2 instance will be created"
-  type        = string
-  default     = null
-}
-
-variable "availability_zone" {
-  description = "Availability zone for the EC2 instance"
-  type        = string
-  default     = null
-}
-
-variable "associate_public_ip_address" {
-  description = "Whether to associate a public IP address"
-  type        = bool
-  default     = false
-}
-
-variable "private_ip" {
-  description = "Private IP address for the EC2 instance"
-  type        = string
-  default     = null
-}
-
-# Security Group Configuration
-variable "create_security_group" {
-  description = "Whether to create a security group for the EC2 instance"
-  type        = bool
-  default     = true
-}
-
-variable "security_group_ids" {
-  description = "List of security group IDs to attach to the EC2 instance"
-  type        = list(string)
-  default     = []
-}
-
-variable "security_group_ingress_rules" {
-  description = "List of ingress rules for the security group"
-  type = list(object({
-    description     = string
-    from_port       = number
-    to_port         = number
-    protocol        = string
-    cidr_blocks     = list(string)
-    security_groups = list(string)
-    self            = bool
-  }))
-  default = [
-    {
-      description     = "SSH access"
-      from_port       = 22
-      to_port         = 22
-      protocol        = "tcp"
-      cidr_blocks     = ["0.0.0.0/0"]
-      security_groups = []
-      self            = false
-    }
-  ]
-}
-
-variable "security_group_egress_rules" {
-  description = "List of egress rules for the security group"
-  type = list(object({
-    description     = string
-    from_port       = number
-    to_port         = number
-    protocol        = string
-    cidr_blocks     = list(string)
-    security_groups = list(string)
-    self            = bool
-  }))
-  default = [
-    {
-      description     = "Allow all outbound traffic"
-      from_port       = 0
-      to_port         = 0
-      protocol        = "-1"
-      cidr_blocks     = ["0.0.0.0/0"]
-      security_groups = []
-      self            = false
-    }
-  ]
-}
-
-# Key Pair Configuration
-variable "create_key_pair" {
-  description = "Whether to create a key pair for SSH access"
-  type        = bool
-  default     = false
-}
-
-variable "key_name" {
-  description = "Name of the key pair to use for SSH access"
-  type        = string
-  default     = null
-}
-
-variable "public_key" {
-  description = "Public key for the key pair"
-  type        = string
-  default     = null
-  sensitive   = true
-}
-
-# IAM Configuration
-variable "create_iam_role" {
-  description = "Whether to create an IAM role for the EC2 instance"
-  type        = bool
-  default     = false
-}
-
-variable "iam_instance_profile_name" {
-  description = "Name of the IAM instance profile to use"
-  type        = string
-  default     = null
-}
-
-variable "iam_policy_statements" {
-  description = "List of IAM policy statements for the EC2 role"
-  type = list(object({
-    Effect    = string
-    Action    = list(string)
-    Resource  = list(string)
-    Condition = map(any)
-  }))
-  default = []
-}
-
-# Launch Template Configuration
-variable "use_launch_template" {
-  description = "Whether to use a launch template instead of direct EC2 instance"
-  type        = bool
-  default     = false
-}
-
-variable "block_device_mappings" {
-  description = "List of block device mappings for the launch template"
-  type = list(object({
-    device_name = string
-    ebs = object({
-      delete_on_termination = bool
-      encrypted             = bool
-      iops                  = number
-      kms_key_id            = string
-      snapshot_id           = string
-      throughput            = number
-      volume_size           = number
-      volume_type           = string
-    })
-  }))
-  default = []
-}
-
-variable "network_interfaces" {
-  description = "List of network interfaces for the launch template"
-  type = list(object({
-    associate_public_ip_address = bool
-    delete_on_termination       = bool
-    description                 = string
-    device_index                = number
-    network_interface_id        = string
-    private_ip_address          = string
-    subnet_id                   = string
-    groups                      = list(string)
-  }))
-  default = []
-}
-
-# User Data Configuration
-variable "user_data" {
-  description = "User data script for the EC2 instance"
-  type        = string
-  default     = null
-}
-
-variable "user_data_replace_on_change" {
-  description = "Whether to replace the instance when user data changes"
-  type        = bool
-  default     = false
-}
-
-# Block Device Configuration
-variable "root_block_device" {
-  description = "Root block device configuration"
-  type = list(object({
-    delete_on_termination = bool
-    encrypted             = bool
-    iops                  = number
-    kms_key_id            = string
-    volume_size           = number
-    volume_type           = string
-    throughput            = number
-  }))
-  default = [
-    {
-      delete_on_termination = true
-      encrypted             = true
-      iops                  = null
-      kms_key_id            = null
-      volume_size           = 20
-      volume_type           = "gp3"
-      throughput            = null
-    }
-  ]
-}
-
-variable "ebs_block_device" {
-  description = "List of EBS block devices"
-  type = list(object({
-    delete_on_termination = bool
-    device_name           = string
-    encrypted             = bool
-    iops                  = number
-    kms_key_id            = string
-    snapshot_id           = string
-    volume_size           = number
-    volume_type           = string
-    throughput            = number
-  }))
-  default = []
-}
-
-variable "ephemeral_block_device" {
-  description = "List of ephemeral block devices"
-  type = list(object({
-    device_name  = string
-    no_device    = bool
-    virtual_name = string
-  }))
-  default = []
-}
-
-# Monitoring Configuration
-variable "enable_detailed_monitoring" {
-  description = "Whether to enable detailed monitoring"
-  type        = bool
-  default     = false
-}
-
-# Metadata Configuration
-variable "metadata_options" {
-  description = "Metadata options for the EC2 instance"
-  type = object({
-    http_endpoint               = string
-    http_tokens                 = string
-    http_put_response_hop_limit = number
-    instance_metadata_tags      = string
-  })
-  default = null
-}
-
-# Instance Configuration
-variable "source_dest_check" {
-  description = "Whether to enable source/destination check"
-  type        = bool
-  default     = true
-}
-
-variable "disable_api_termination" {
-  description = "Whether to disable API termination"
-  type        = bool
-  default     = false
-}
-
-variable "instance_initiated_shutdown_behavior" {
-  description = "Shutdown behavior for the instance"
-  type        = string
-  default     = "stop"
-
-  validation {
-    condition     = contains(["stop", "terminate"], var.instance_initiated_shutdown_behavior)
-    error_message = "Shutdown behavior must be either 'stop' or 'terminate'."
-  }
-}
-
-variable "placement_group" {
-  description = "Placement group for the instance"
-  type        = string
-  default     = null
-}
-
-variable "tenancy" {
-  description = "Tenancy of the instance"
-  type        = string
-  default     = "default"
-
-  validation {
-    condition     = contains(["default", "dedicated"], var.tenancy)
-    error_message = "Tenancy must be either 'default' or 'dedicated'."
-  }
-}
-
-variable "host_id" {
-  description = "Host ID for the instance"
-  type        = string
-  default     = null
-}
-
-variable "cpu_core_count" {
-  description = "Number of CPU cores for the instance"
-  type        = number
-  default     = null
-}
-
-variable "cpu_threads_per_core" {
-  description = "Number of CPU threads per core"
-  type        = number
-  default     = null
-}
-
-variable "hibernation" {
-  description = "Whether to enable hibernation"
-  type        = bool
-  default     = false
-}
-
-# Capacity Reservation Configuration
-variable "capacity_reservation_preference" {
-  description = "Capacity reservation preference"
-  type        = string
-  default     = "open"
-
-  validation {
-    condition     = contains(["open", "none"], var.capacity_reservation_preference)
-    error_message = "Capacity reservation preference must be either 'open' or 'none'."
-  }
-}
-
-variable "capacity_reservation_target" {
-  description = "Capacity reservation target"
-  type = object({
-    capacity_reservation_id = string
-  })
-  default = null
-}
-
-# Auto Scaling Group Configuration
-variable "create_autoscaling_group" {
-  description = "Whether to create an Auto Scaling Group"
-  type        = bool
-  default     = false
-}
-
-variable "asg_desired_capacity" {
-  description = "Desired capacity for the Auto Scaling Group"
-  type        = number
-  default     = 1
-}
-
-variable "asg_max_size" {
-  description = "Maximum size for the Auto Scaling Group"
-  type        = number
-  default     = 3
-}
-
-variable "asg_min_size" {
-  description = "Minimum size for the Auto Scaling Group"
-  type        = number
-  default     = 1
-}
-
-variable "asg_health_check_grace_period" {
-  description = "Health check grace period for the Auto Scaling Group"
-  type        = number
-  default     = 300
-}
-
-variable "asg_health_check_type" {
-  description = "Health check type for the Auto Scaling Group"
-  type        = string
-  default     = "EC2"
-
-  validation {
-    condition     = contains(["EC2", "ELB"], var.asg_health_check_type)
-    error_message = "Health check type must be either 'EC2' or 'ELB'."
-  }
-}
-
-variable "asg_subnet_ids" {
-  description = "List of subnet IDs for the Auto Scaling Group"
-  type        = list(string)
-  default     = []
-}
-
-variable "asg_tags" {
-  description = "Tags for the Auto Scaling Group"
-  type = list(object({
-    key                 = string
-    value               = string
-    propagate_at_launch = bool
-  }))
-  default = []
-}
-
-variable "target_group_arns" {
-  description = "List of target group ARNs for the Auto Scaling Group"
-  type        = list(string)
-  default     = []
-}
-
-variable "load_balancers" {
-  description = "List of load balancer names for the Auto Scaling Group"
-  type        = list(string)
-  default     = []
-}
-
-variable "service_linked_role_arn" {
-  description = "Service linked role ARN for the Auto Scaling Group"
-  type        = string
-  default     = null
-}
-
-variable "max_instance_lifetime" {
-  description = "Maximum instance lifetime for the Auto Scaling Group"
-  type        = number
-  default     = null
-}
-
-variable "capacity_rebalance" {
-  description = "Whether to enable capacity rebalancing"
-  type        = bool
-  default     = false
-}
-
-# Warm Pool Configuration
-variable "warm_pool_state" {
-  description = "State of the warm pool"
-  type        = string
-  default     = "Stopped"
-
-  validation {
-    condition     = contains(["Stopped", "Running"], var.warm_pool_state)
-    error_message = "Warm pool state must be either 'Stopped' or 'Running'."
-  }
-}
-
-variable "warm_pool_min_size" {
-  description = "Minimum size for the warm pool"
-  type        = number
-  default     = 0
-}
-
-variable "warm_pool_max_group_prepared_capacity" {
-  description = "Maximum group prepared capacity for the warm pool"
-  type        = number
-  default     = null
-}
-
-# Mixed Instances Policy Configuration
-variable "mixed_instances_policy" {
-  description = "Mixed instances policy for the Auto Scaling Group"
-  type = object({
-    instances_distribution = object({
-      on_demand_base_capacity                  = number
-      on_demand_percentage_above_base_capacity = number
-      on_demand_allocation_strategy            = string
-      spot_allocation_strategy                 = string
-      spot_instance_pools                      = number
-      spot_max_price                           = string
-    })
-    override = list(object({
-      instance_type     = string
-      weighted_capacity = number
-    }))
-  })
-  default = null
-}
-
-# Instance Refresh Configuration
-variable "instance_refresh" {
-  description = "Instance refresh configuration for the Auto Scaling Group"
-  type = object({
-    strategy = string
-    preferences = object({
-      min_healthy_percentage = number
-      max_healthy_percentage = number
-      instance_warmup        = number
-      checkpoint_percentages = list(number)
-      checkpoint_delay       = number
-      auto_rollback          = bool
-      scale_in_protected_instances = string
-      standby_instances      = string
-    })
-  })
-  default = null
-}
-
-# Auto Scaling Policy Configuration
-variable "asg_policies" {
-  description = "Auto Scaling policies"
+# ==============================================================================
+# Application Load Balancer Variables
+# ==============================================================================
+
+variable "application_load_balancers" {
+  description = "Application Load Balancer configuration"
   type = map(object({
     name = string
-    adjustment_type = string
-    scaling_adjustment = number
-    cooldown = number
-    metric_aggregation_type = string
-    min_adjustment_magnitude = number
-    step_adjustment = list(object({
-      metric_interval_lower_bound = number
-      metric_interval_upper_bound = number
-      scaling_adjustment          = number
-    }))
-    target_tracking_configuration = object({
-      predefined_metric_type = string
-      resource_label         = string
-      target_value           = number
-      disable_scale_in       = bool
+    internal = optional(bool, false)
+    security_groups = list(string)
+    enable_deletion_protection = optional(bool, false)
+    enable_http2 = optional(bool, true)
+    access_logs_bucket = optional(string, null)
+    access_logs_prefix = optional(string, "")
+    target_group = object({
+      port = number
+      protocol = string
+      target_type = string
+      health_check = object({
+        enabled = optional(bool, true)
+        healthy_threshold = optional(number, 2)
+        interval = optional(number, 30)
+        matcher = optional(string, "200")
+        path = optional(string, "/")
+        port = optional(string, "traffic-port")
+        protocol = optional(string, "HTTP")
+        timeout = optional(number, 5)
+        unhealthy_threshold = optional(number, 2)
+      })
     })
+    listeners = list(object({
+      port = number
+      protocol = string
+      ssl_policy = optional(string, null)
+      certificate_arn = optional(string, null)
+      default_action = object({
+        type = string
+        target_group_arn = string
+      })
+      tags = optional(map(string), {})
+    }))
+    tags = optional(map(string), {})
   }))
   default = {}
 }
 
-# CloudWatch Alarm Configuration
-variable "cloudwatch_alarms" {
-  description = "CloudWatch alarms for the Auto Scaling Group"
+# ==============================================================================
+# RDS Variables
+# ==============================================================================
+
+variable "rds_instances" {
+  description = "RDS database instances configuration"
   type = map(object({
-    alarm_name = string
-    comparison_operator = string
-    evaluation_periods = number
-    metric_name = string
-    namespace = string
-    period = number
-    statistic = string
-    threshold = number
-    alarm_description = string
-    alarm_actions = list(string)
-    ok_actions = list(string)
-    insufficient_data_actions = list(string)
-    dimensions = list(object({
-      name  = string
-      value = string
-    }))
+    name = string
+    engine = string
+    engine_version = optional(string, null)
+    instance_class = string
+    allocated_storage = optional(number, 20)
+    max_allocated_storage = optional(number, null)
+    storage_type = optional(string, "gp2")
+    storage_encrypted = optional(bool, true)
+    db_name = string
+    username = string
+    password = string
+    security_group_ids = list(string)
+    backup_retention_period = optional(number, 7)
+    backup_window = optional(string, "03:00-04:00")
+    maintenance_window = optional(string, "sun:04:00-sun:05:00")
+    multi_az = optional(bool, false)
+    publicly_accessible = optional(bool, false)
+    skip_final_snapshot = optional(bool, false)
+    deletion_protection = optional(bool, false)
+    tags = optional(map(string), {})
   }))
   default = {}
+}
+
+# ==============================================================================
+# ElastiCache Variables
+# ==============================================================================
+
+variable "elasticache_clusters" {
+  description = "ElastiCache clusters configuration"
+  type = map(object({
+    name = string
+    engine = string
+    node_type = string
+    num_cache_nodes = optional(number, 1)
+    parameter_group_name = optional(string, null)
+    port = optional(number, 6379)
+    security_group_ids = list(string)
+    preferred_availability_zones = optional(list(string), [])
+    tags = optional(map(string), {})
+  }))
+  default = {}
+}
+
+# ==============================================================================
+# Lambda Variables
+# ==============================================================================
+
+variable "lambda_functions" {
+  description = "Lambda functions with VPC configuration"
+  type = map(object({
+    name = string
+    filename = string
+    handler = string
+    runtime = string
+    timeout = optional(number, 3)
+    memory_size = optional(number, 128)
+    subnet_ids = list(string)
+    security_group_ids = list(string)
+    environment_variables = optional(map(string), {})
+    tags = optional(map(string), {})
+  }))
+  default = {}
+}
+
+# ==============================================================================
+# EKS Variables
+# ==============================================================================
+
+variable "eks_config" {
+  description = "EKS cluster configuration"
+  type = object({
+    cluster_version = optional(string, "1.28")
+    cluster_endpoint_private_access = optional(bool, true)
+    cluster_endpoint_public_access  = optional(bool, true)
+    cluster_endpoint_public_access_cidrs = optional(list(string), ["0.0.0.0/0"])
+    cluster_service_ipv4_cidr = optional(string, "172.16.0.0/12")
+    cluster_ip_family = optional(string, "ipv4")
+    enable_irsa = optional(bool, true)
+    enable_cluster_creator_admin_permissions = optional(bool, true)
+    create_cloudwatch_log_group = optional(bool, true)
+    cluster_log_retention_in_days = optional(number, 7)
+    cluster_log_types = optional(list(string), ["api", "audit", "authenticator", "controllerManager", "scheduler"])
+  })
+  default = {}
+}
+
+variable "eks_node_groups" {
+  description = "EKS node groups configuration"
+  type = map(object({
+    name = string
+    instance_types = list(string)
+    capacity_type = optional(string, "ON_DEMAND")
+    disk_size = optional(number, 20)
+    disk_type = optional(string, "gp3")
+    ami_type = optional(string, "AL2_x86_64")
+    platform = optional(string, "linux")
+    desired_size = optional(number, 2)
+    max_size = optional(number, 5)
+    min_size = optional(number, 1)
+    max_unavailable = optional(number, 1)
+    max_unavailable_percentage = optional(number, null)
+    force_update_version = optional(bool, false)
+    update_config = optional(object({
+      max_unavailable_percentage = optional(number, 33)
+    }), {})
+    labels = optional(map(string), {})
+    taints = optional(list(object({
+      key    = string
+      value  = string
+      effect = string
+    })), [])
+    tags = optional(map(string), {})
+  }))
+  default = {}
+}
+
+variable "eks_fargate_profiles" {
+  description = "EKS Fargate profiles configuration"
+  type = map(object({
+    name = string
+    selectors = list(object({
+      namespace = string
+      labels = optional(map(string), {})
+    }))
+    subnets = optional(list(string), [])
+    tags = optional(map(string), {})
+  }))
+  default = {}
+}
+
+# ==============================================================================
+# ECR Variables
+# ==============================================================================
+
+variable "ecr_repositories" {
+  description = "ECR repositories configuration"
+  type = map(object({
+    name = string
+    image_tag_mutability = optional(string, "MUTABLE")
+    scan_on_push = optional(bool, true)
+    encryption_type = optional(string, "AES256")
+    kms_key_id = optional(string, null)
+    lifecycle_policy = optional(object({
+      max_image_count = optional(number, 30)
+      max_age_days = optional(number, 90)
+    }), {})
+    tags = optional(map(string), {})
+  }))
+  default = {}
+}
+
+# ==============================================================================
+# Security Groups Variables
+# ==============================================================================
+
+variable "security_groups" {
+  description = "Security groups configuration"
+  type = map(object({
+    name = string
+    description = string
+    vpc_id = optional(string, null)
+    ingress_rules = optional(list(object({
+      description = optional(string, "")
+      from_port = number
+      to_port = number
+      protocol = string
+      cidr_blocks = optional(list(string), [])
+      security_groups = optional(list(string), [])
+      self = optional(bool, false)
+    })), [])
+    egress_rules = optional(list(object({
+      description = optional(string, "")
+      from_port = number
+      to_port = number
+      protocol = string
+      cidr_blocks = optional(list(string), ["0.0.0.0/0"])
+      security_groups = optional(list(string), [])
+      self = optional(bool, false)
+    })), [])
+    tags = optional(map(string), {})
+  }))
+  default = {}
+}
+
+# ==============================================================================
+# Monitoring and Logging Variables
+# ==============================================================================
+
+variable "enable_cloudwatch_container_insights" {
+  description = "Enable CloudWatch Container Insights for EKS"
+  type        = bool
+  default     = true
+}
+
+variable "enable_aws_load_balancer_controller" {
+  description = "Enable AWS Load Balancer Controller"
+  type        = bool
+  default     = true
+}
+
+variable "enable_metrics_server" {
+  description = "Enable Metrics Server"
+  type        = bool
+  default     = true
+}
+
+variable "enable_cluster_autoscaler" {
+  description = "Enable Cluster Autoscaler"
+  type        = bool
+  default     = false
+}
+
+# ==============================================================================
+# Backup and Disaster Recovery Variables
+# ==============================================================================
+
+variable "enable_velero_backup" {
+  description = "Enable Velero backup solution"
+  type        = bool
+  default     = false
+}
+
+variable "velero_backup_config" {
+  description = "Velero backup configuration"
+  type = object({
+    backup_location_bucket = optional(string, "")
+    backup_location_region = optional(string, "")
+    schedule = optional(string, "0 2 * * *") # Daily at 2 AM
+    retention_days = optional(number, 30)
+  })
+  default = {}
+}
+
+# ==============================================================================
+# Network Policy Variables
+# ==============================================================================
+
+variable "enable_network_policies" {
+  description = "Enable network policies for EKS"
+  type        = bool
+  default     = false
+}
+
+variable "network_policy_provider" {
+  description = "Network policy provider (calico, cilium, or aws-vpc-cni)"
+  type        = string
+  default     = "calico"
+  validation {
+    condition     = contains(["calico", "cilium", "aws-vpc-cni"], var.network_policy_provider)
+    error_message = "Network policy provider must be one of: calico, cilium, aws-vpc-cni."
+  }
 } 

@@ -1,252 +1,285 @@
-# Makefile for EC2 Terraform Module
-# Usage: make <target>
+# ==============================================================================
+# AWS Container Infrastructure Terraform Module Makefile
+# ==============================================================================
 
-.PHONY: help init plan apply destroy fmt validate lint clean test examples
+.PHONY: help init plan apply destroy validate fmt lint test clean examples
 
 # Default target
 help:
+	@echo "AWS Container Infrastructure Terraform Module"
+	@echo ""
 	@echo "Available targets:"
 	@echo "  init      - Initialize Terraform"
-	@echo "  plan      - Create Terraform plan"
+	@echo "  plan      - Plan Terraform changes"
 	@echo "  apply     - Apply Terraform changes"
 	@echo "  destroy   - Destroy Terraform resources"
-	@echo "  fmt       - Format Terraform code"
 	@echo "  validate  - Validate Terraform configuration"
-	@echo "  lint      - Run TFLint"
-	@echo "  clean     - Clean up Terraform files"
+	@echo "  fmt       - Format Terraform code"
+	@echo "  lint      - Lint Terraform code"
 	@echo "  test      - Run tests"
+	@echo "  clean     - Clean up temporary files"
 	@echo "  examples  - Run examples"
 	@echo "  docs      - Generate documentation"
 
-# Initialize Terraform
+# ==============================================================================
+# Terraform Operations
+# ==============================================================================
+
 init:
 	@echo "Initializing Terraform..."
 	terraform init
-	@echo "Terraform initialized successfully!"
 
-# Create Terraform plan
 plan:
-	@echo "Creating Terraform plan..."
-	terraform plan -out=tfplan
-	@echo "Plan created successfully!"
+	@echo "Planning Terraform changes..."
+	terraform plan
 
-# Apply Terraform changes
 apply:
 	@echo "Applying Terraform changes..."
-	terraform apply tfplan
-	@echo "Changes applied successfully!"
+	terraform apply
 
-# Apply Terraform changes (auto-approve)
-apply-auto:
-	@echo "Applying Terraform changes (auto-approve)..."
-	terraform apply -auto-approve
-	@echo "Changes applied successfully!"
-
-# Destroy Terraform resources
 destroy:
 	@echo "Destroying Terraform resources..."
-	terraform destroy -auto-approve
-	@echo "Resources destroyed successfully!"
+	terraform destroy
 
-# Format Terraform code
-fmt:
-	@echo "Formatting Terraform code..."
-	terraform fmt -recursive
-	@echo "Code formatted successfully!"
+# ==============================================================================
+# Code Quality
+# ==============================================================================
 
-# Validate Terraform configuration
 validate:
 	@echo "Validating Terraform configuration..."
 	terraform validate
-	@echo "Configuration is valid!"
 
-# Run TFLint
+fmt:
+	@echo "Formatting Terraform code..."
+	terraform fmt -recursive
+
 lint:
-	@echo "Running TFLint..."
-	tflint --init
-	tflint
-	@echo "Linting completed!"
+	@echo "Linting Terraform code..."
+	@if command -v tflint >/dev/null 2>&1; then \
+		tflint --init; \
+		tflint; \
+	else \
+		echo "tflint not found. Install with: go install github.com/terraform-linters/tflint/cmd/tflint@latest"; \
+	fi
 
-# Clean up Terraform files
-clean:
-	@echo "Cleaning up Terraform files..."
-	rm -rf .terraform
-	rm -f .terraform.lock.hcl
-	rm -f tfplan
-	rm -f *.tfstate
-	rm -f *.tfstate.backup
-	@echo "Cleanup completed!"
+# ==============================================================================
+# Testing
+# ==============================================================================
 
-# Run tests
-test: validate lint
+test: validate fmt lint
 	@echo "Running tests..."
-	cd test && terraform init
-	cd test && terraform plan -detailed-exitcode
-	@echo "Tests completed!"
+	@if [ -d "test" ]; then \
+		cd test && terraform init && terraform plan; \
+	else \
+		echo "No test directory found"; \
+	fi
 
-# Run examples
+# ==============================================================================
+# Examples
+# ==============================================================================
+
 examples:
 	@echo "Running examples..."
-	cd examples && terraform init
-	cd examples && terraform plan -detailed-exitcode
-	@echo "Examples completed!"
+	@for example in examples/*/; do \
+		if [ -d "$$example" ]; then \
+			echo "Testing example: $$example"; \
+			cd "$$example" && terraform init && terraform plan -out=tfplan && rm tfplan; \
+			cd ../..; \
+		fi; \
+	done
 
-# Development workflow
-dev: fmt validate lint
-	@echo "Development checks completed!"
+# ==============================================================================
+# Documentation
+# ==============================================================================
 
-# Production workflow
-prod: fmt validate lint test examples
-	@echo "Production checks completed!"
-
-# Install dependencies
-install:
-	@echo "Installing dependencies..."
-	curl -sSLo ~/.local/bin/tflint https://github.com/terraform-linters/tflint/releases/latest/download/tflint_linux_amd64
-	chmod +x ~/.local/bin/tflint
-	@echo "Dependencies installed successfully!"
-
-# Show current workspace
-workspace:
-	@echo "Current workspace: $(shell terraform workspace show)"
-
-# List workspaces
-workspaces:
-	@echo "Available workspaces:"
-	@terraform workspace list
-
-# Create new workspace
-workspace-new:
-	@read -p "Enter workspace name: " name; \
-	terraform workspace new $$name
-
-# Switch workspace
-workspace-switch:
-	@read -p "Enter workspace name: " name; \
-	terraform workspace select $$name
-
-# Generate documentation
 docs:
 	@echo "Generating documentation..."
-	terraform-docs markdown table . > README.md
-	@echo "Documentation generated successfully!"
+	@if command -v terraform-docs >/dev/null 2>&1; then \
+		terraform-docs markdown table . > README.md.tmp; \
+		mv README.md.tmp README.md; \
+	else \
+		echo "terraform-docs not found. Install with: go install github.com/terraform-docs/terraform-docs/cmd/terraform-docs@latest"; \
+	fi
 
-# Security scan
-security:
+# ==============================================================================
+# Cleanup
+# ==============================================================================
+
+clean:
+	@echo "Cleaning up temporary files..."
+	find . -name "*.tfstate*" -delete
+	find . -name "*.tfplan" -delete
+	find . -name ".terraform" -type d -exec rm -rf {} + 2>/dev/null || true
+	find . -name ".terraform.lock.hcl" -delete
+
+# ==============================================================================
+# Development
+# ==============================================================================
+
+dev-setup:
+	@echo "Setting up development environment..."
+	@if ! command -v terraform >/dev/null 2>&1; then \
+		echo "Terraform not found. Please install Terraform first."; \
+		exit 1; \
+	fi
+	@if ! command -v aws >/dev/null 2>&1; then \
+		echo "AWS CLI not found. Please install AWS CLI first."; \
+		exit 1; \
+	fi
+	@if ! command -v kubectl >/dev/null 2>&1; then \
+		echo "kubectl not found. Please install kubectl first."; \
+		exit 1; \
+	fi
+	@echo "Development environment setup complete!"
+
+# ==============================================================================
+# Security
+# ==============================================================================
+
+security-scan:
 	@echo "Running security scan..."
-	terrascan scan
-	@echo "Security scan completed!"
+	@if command -v terrascan >/dev/null 2>&1; then \
+		terrascan scan -i terraform .; \
+	else \
+		echo "terrascan not found. Install with: go install github.com/tenable/terrascan/cmd/terrascan@latest"; \
+	fi
 
-# Cost estimation
-cost:
+# ==============================================================================
+# Cost Estimation
+# ==============================================================================
+
+cost-estimate:
 	@echo "Estimating costs..."
-	terraform plan -out=tfplan
-	terraform show -json tfplan | jq '.planned_values.root_module.resources[] | select(.type == "aws_instance") | {address: .address, type: .type, values: .values}'
-	@echo "Cost estimation completed!"
+	@if command -v infracost >/dev/null 2>&1; then \
+		infracost breakdown --path .; \
+	else \
+		echo "infracost not found. Install with: brew install infracost"; \
+	fi
 
-# Backup state
+# ==============================================================================
+# Pre-commit
+# ==============================================================================
+
+pre-commit: fmt lint validate
+	@echo "Pre-commit checks completed successfully!"
+
+# ==============================================================================
+# Release
+# ==============================================================================
+
+release:
+	@echo "Creating release..."
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Please specify VERSION=1.0.0"; \
+		exit 1; \
+	fi
+	git tag -a v$(VERSION) -m "Release v$(VERSION)"
+	git push origin v$(VERSION)
+
+# ==============================================================================
+# Module Registry
+# ==============================================================================
+
+publish:
+	@echo "Publishing module to Terraform Registry..."
+	@echo "This is a placeholder. Implement your publishing logic here."
+	@echo "Consider using GitHub Actions for automated publishing."
+
+# ==============================================================================
+# Monitoring
+# ==============================================================================
+
+monitor:
+	@echo "Setting up monitoring..."
+	@echo "This is a placeholder. Implement your monitoring setup here."
+
+# ==============================================================================
+# Backup
+# ==============================================================================
+
 backup:
-	@echo "Backing up Terraform state..."
-	cp *.tfstate *.tfstate.backup.$(shell date +%Y%m%d_%H%M%S)
-	@echo "State backup completed!"
+	@echo "Creating backup..."
+	@echo "This is a placeholder. Implement your backup logic here."
 
-# Restore state
-restore:
-	@echo "Available backups:"
-	@ls -la *.tfstate.backup.*
-	@read -p "Enter backup file to restore: " backup; \
-	cp $$backup *.tfstate
-	@echo "State restored successfully!"
+# ==============================================================================
+# Disaster Recovery
+# ==============================================================================
 
-# Show outputs
-outputs:
-	@echo "Terraform outputs:"
-	@terraform output
+dr-test:
+	@echo "Testing disaster recovery..."
+	@echo "This is a placeholder. Implement your DR testing logic here."
 
-# Show resources
-resources:
-	@echo "Terraform resources:"
-	@terraform state list
+# ==============================================================================
+# Compliance
+# ==============================================================================
 
-# Import resource
-import:
-	@read -p "Enter resource address: " address; \
-	read -p "Enter resource ID: " id; \
-	terraform import $$address $$id
-	@echo "Resource imported successfully!"
+compliance-check:
+	@echo "Running compliance checks..."
+	@echo "This is a placeholder. Implement your compliance checks here."
 
-# Refresh state
-refresh:
-	@echo "Refreshing Terraform state..."
-	terraform refresh
-	@echo "State refreshed successfully!"
+# ==============================================================================
+# Performance
+# ==============================================================================
 
-# Show plan
-show-plan:
-	@echo "Showing Terraform plan..."
-	terraform show tfplan
+performance-test:
+	@echo "Running performance tests..."
+	@echo "This is a placeholder. Implement your performance tests here."
 
-# Show state
-show-state:
-	@echo "Showing Terraform state..."
+# ==============================================================================
+# All-in-one
+# ==============================================================================
+
+all: dev-setup init validate fmt lint test examples security-scan cost-estimate
+	@echo "All checks completed successfully!"
+
+# ==============================================================================
+# Helpers
+# ==============================================================================
+
+version:
+	@echo "Terraform version:"
+	terraform version
+	@echo ""
+	@echo "AWS CLI version:"
+	aws --version
+	@echo ""
+	@echo "kubectl version:"
+	kubectl version --client
+
+status:
+	@echo "Checking Terraform status..."
 	terraform show
 
-# Lock state
-lock:
-	@echo "Locking Terraform state..."
-	terraform force-unlock -force
+outputs:
+	@echo "Terraform outputs:"
+	terraform output
 
-# Unlock state
-unlock:
-	@echo "Unlocking Terraform state..."
-	@read -p "Enter lock ID: " lock_id; \
-	terraform force-unlock $$lock_id
+# ==============================================================================
+# Troubleshooting
+# ==============================================================================
 
-# Validate variables
-validate-vars:
-	@echo "Validating variables..."
-	terraform validate -var-file=variables.tfvars
-	@echo "Variables validated successfully!"
+debug:
+	@echo "Debug information:"
+	@echo "Terraform version: $(shell terraform version)"
+	@echo "AWS region: $(shell aws configure get region)"
+	@echo "AWS account: $(shell aws sts get-caller-identity --query Account --output text)"
+	@echo "Current directory: $(PWD)"
+	@echo "Terraform files:"
+	@find . -name "*.tf" -type f
 
-# Plan with variables
-plan-vars:
-	@echo "Creating Terraform plan with variables..."
-	terraform plan -var-file=variables.tfvars -out=tfplan
-	@echo "Plan created successfully!"
+# ==============================================================================
+# Environment-specific
+# ==============================================================================
 
-# Apply with variables
-apply-vars:
-	@echo "Applying Terraform changes with variables..."
-	terraform apply -var-file=variables.tfvars
-	@echo "Changes applied successfully!"
+dev: environment=dev
+dev: apply
 
-# Destroy with variables
-destroy-vars:
-	@echo "Destroying Terraform resources with variables..."
-	terraform destroy -var-file=variables.tfvars -auto-approve
-	@echo "Resources destroyed successfully!"
+staging: environment=staging
+staging: apply
 
-# Show module usage
-usage:
-	@echo "Module usage examples:"
-	@echo ""
-	@echo "Basic EC2 instance:"
-	@echo "module \"ec2\" {"
-	@echo "  source = \"./ec2-module\""
-	@echo "  instance_name = \"my-instance\""
-	@echo "  instance_type = \"t3.micro\""
-	@echo "  subnet_id     = \"subnet-12345678\""
-	@echo "}"
-	@echo ""
-	@echo "EC2 instance with Auto Scaling Group:"
-	@echo "module \"ec2\" {"
-	@echo "  source = \"./ec2-module\""
-	@echo "  instance_name = \"my-instance\""
-	@echo "  instance_type = \"t3.micro\""
-	@echo "  use_launch_template = true"
-	@echo "  create_autoscaling_group = true"
-	@echo "  asg_desired_capacity = 2"
-	@echo "  asg_max_size = 5"
-	@echo "  asg_min_size = 1"
-	@echo "  asg_subnet_ids = [\"subnet-12345678\", \"subnet-87654321\"]"
-	@echo "}" 
+prod: environment=prod
+prod: apply
+
+# ==============================================================================
+# End of Makefile
+# ============================================================================== 

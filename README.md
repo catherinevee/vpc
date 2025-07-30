@@ -1,177 +1,290 @@
-# AWS EC2 Terraform Module
+# AWS VPC Infrastructure Module
 
-A comprehensive Terraform module for creating and managing AWS EC2 instances with support for launch templates, Auto Scaling Groups, IAM roles, security groups, and more.
+A comprehensive Terraform module for creating AWS VPC infrastructure with integrated cloud resources including EKS, RDS, ElastiCache, Application Load Balancers, Lambda functions, and more.
 
 ## Features
 
-- **Multiple AMI Support**: Amazon Linux 2, Ubuntu, and custom AMIs
-- **Launch Templates**: Support for AWS Launch Templates with advanced configurations
-- **Auto Scaling Groups**: Complete Auto Scaling Group setup with policies and CloudWatch alarms
-- **IAM Integration**: Automatic IAM role and instance profile creation
-- **Security Groups**: Flexible security group configuration with ingress/egress rules
-- **Key Pairs**: SSH key pair management
-- **Block Devices**: Configurable root and EBS block devices
-- **User Data**: Support for user data scripts
-- **Monitoring**: Detailed monitoring and metadata options
-- **Tags**: Comprehensive tagging support
-- **Multiple Instances**: Support for creating multiple instances with count
+- **Multi-tier VPC Architecture**: Public, private, database, ElastiCache, Redshift, and intra subnets
+- **EKS Integration**: Complete EKS cluster with managed node groups and Fargate profiles
+- **Database Services**: RDS instances with subnet groups and security configurations
+- **Caching Layer**: ElastiCache clusters for Redis and Memcached
+- **Load Balancing**: Application Load Balancers with target groups and listeners
+- **Serverless Computing**: Lambda functions with VPC integration
+- **Container Registry**: ECR repositories with lifecycle policies
+- **Security**: Comprehensive security groups and network policies
+- **Monitoring**: CloudWatch Container Insights, metrics server, and cluster autoscaler
+- **Backup & Recovery**: Velero backup solution for Kubernetes resources
+- **Network Policies**: Support for Calico and Cilium network policies
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        AWS VPC Infrastructure                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
+│  │   Public    │    │   Public    │    │   Public    │         │
+│  │   Subnets   │    │   Subnets   │    │   Subnets   │         │
+│  │             │    │             │    │             │         │
+│  │ ┌─────────┐ │    │ ┌─────────┐ │    │ ┌─────────┐ │         │
+│  │ │   ALB   │ │    │ │   ALB   │ │    │ │   ALB   │ │         │
+│  │ └─────────┘ │    │ └─────────┘ │    │ └─────────┘ │         │
+│  └─────────────┘    └─────────────┘    └─────────────┘         │
+│         │                   │                   │               │
+│         └───────────────────┼───────────────────┘               │
+│                             │                                   │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
+│  │   Private   │    │   Private   │    │   Private   │         │
+│  │   Subnets   │    │   Subnets   │    │   Subnets   │         │
+│  │             │    │             │    │             │         │
+│  │ ┌─────────┐ │    │ ┌─────────┐ │    │ ┌─────────┐ │         │
+│  │ │  EKS    │ │    │ │  EKS    │ │    │ │  EKS    │ │         │
+│  │ │ Nodes   │ │    │ │ Nodes   │ │    │ │ Nodes   │ │         │
+│  │ └─────────┘ │    │ └─────────┘ │    │ └─────────┘ │         │
+│  │ ┌─────────┐ │    │ ┌─────────┐ │    │ ┌─────────┐ │         │
+│  │ │ Lambda  │ │    │ │ Lambda  │ │    │ │ Lambda  │ │         │
+│  │ └─────────┘ │    │ └─────────┘ │    │ └─────────┘ │         │
+│  └─────────────┘    └─────────────┘    └─────────────┘         │
+│         │                   │                   │               │
+│         └───────────────────┼───────────────────┘               │
+│                             │                                   │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
+│  │  Database   │    │  Database   │    │  Database   │         │
+│  │   Subnets   │    │   Subnets   │    │   Subnets   │         │
+│  │             │    │             │    │             │         │
+│  │ ┌─────────┐ │    │ ┌─────────┐ │    │ ┌─────────┐ │         │
+│  │ │   RDS   │ │    │ │   RDS   │ │    │ │   RDS   │ │         │
+│  │ └─────────┘ │    │ └─────────┘ │    │ └─────────┘ │         │
+│  └─────────────┘    └─────────────┘    └─────────────┘         │
+│                                                                 │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
+│  │ ElastiCache │    │ ElastiCache │    │ ElastiCache │         │
+│  │   Subnets   │    │   Subnets   │    │   Subnets   │         │
+│  │             │    │             │    │             │         │
+│  │ ┌─────────┐ │    │ ┌─────────┐ │    │ ┌─────────┐ │         │
+│  │ │  Redis  │ │    │ │  Redis  │ │    │ │  Redis  │ │         │
+│  │ └─────────┘ │    │ └─────────┘ │    │ └─────────┘ │         │
+│  └─────────────┘    └─────────────┘    └─────────────┘         │
+│                                                                 │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
+│  │  Redshift   │    │  Redshift   │    │  Redshift   │         │
+│  │   Subnets   │    │   Subnets   │    │   Subnets   │         │
+│  │             │    │             │    │             │         │
+│  │ ┌─────────┐ │    │ ┌─────────┐ │    │ ┌─────────┐ │         │
+│  │ │Redshift │ │    │ │Redshift │ │    │ │Redshift │ │         │
+│  │ └─────────┘ │    │ └─────────┘ │    │ └─────────┘ │         │
+│  └─────────────┘    └─────────────┘    └─────────────┘         │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ## Usage
 
-### Basic EC2 Instance
+### Basic Example
 
 ```hcl
-module "ec2" {
-  source = "./ec2-module"
+module "vpc_infrastructure" {
+  source = "./vpc"
 
-  instance_name = "my-instance"
-  instance_type = "t3.micro"
-  subnet_id     = "subnet-12345678"
+  name        = "my-app"
+  environment = "dev"
 
-  # Use latest Amazon Linux 2 AMI
-  use_latest_ami = true
-  ami_type       = "amazon_linux_2"
-
-  # Create security group
-  create_security_group = true
-  vpc_id                = "vpc-12345678"
-
-  security_group_ingress_rules = [
-    {
-      description     = "SSH access"
-      from_port       = 22
-      to_port         = 22
-      protocol        = "tcp"
-      cidr_blocks     = ["0.0.0.0/0"]
-      security_groups = []
-      self            = false
-    }
-  ]
-
-  tags = {
-    Environment = "production"
-    Project     = "my-project"
+  # VPC Configuration
+  vpc_config = {
+    cidr_block = "10.0.0.0/16"
+    enable_nat_gateway = true
+    single_nat_gateway = true
+    enable_dns_hostnames = true
+    enable_dns_support   = true
   }
-}
-```
 
-### EC2 Instance with Launch Template and Auto Scaling Group
+  # Subnet Configuration
+  subnet_config = {
+    azs             = ["us-west-2a", "us-west-2b"]
+    private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
+    public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
+    database_subnets = ["10.0.11.0/24", "10.0.12.0/24"]
+  }
 
-```hcl
-module "ec2_asg" {
-  source = "./ec2-module"
-
-  instance_name = "asg-instance"
-  instance_type = "t3.micro"
-  subnet_id     = "subnet-12345678"
-
-  # Use launch template
-  use_launch_template = true
-
-  # Create Auto Scaling Group
-  create_autoscaling_group = true
-  asg_desired_capacity     = 2
-  asg_max_size             = 5
-  asg_min_size             = 1
-  asg_subnet_ids           = ["subnet-12345678", "subnet-87654321"]
-
-  # Auto Scaling policies
-  asg_policies = {
-    scale_up = {
-      name                   = "scale-up"
-      adjustment_type        = "ChangeInCapacity"
-      scaling_adjustment     = 1
-      cooldown               = 300
-    },
-    scale_down = {
-      name                   = "scale-down"
-      adjustment_type        = "ChangeInCapacity"
-      scaling_adjustment     = -1
-      cooldown               = 300
+  # EKS Configuration
+  eks_node_groups = {
+    general = {
+      name           = "general"
+      instance_types = ["t3.medium"]
+      capacity_type  = "ON_DEMAND"
+      desired_size   = 2
+      max_size       = 4
+      min_size       = 1
     }
   }
 
-  # CloudWatch alarms
-  cloudwatch_alarms = {
-    high_cpu = {
-      alarm_name          = "high-cpu-utilization"
-      comparison_operator = "GreaterThanThreshold"
-      evaluation_periods  = 2
-      metric_name         = "CPUUtilization"
-      namespace           = "AWS/EC2"
-      period              = 120
-      statistic           = "Average"
-      threshold           = 80
+  # ECR Repositories
+  ecr_repositories = {
+    app = {
+      name = "my-app"
+      scan_on_push = true
+      lifecycle_policy = {
+        max_image_count = 30
+        max_age_days    = 90
+      }
     }
   }
 
-  create_security_group = true
-  vpc_id                = "vpc-12345678"
-
-  tags = {
-    Environment = "production"
-    Project     = "my-project"
-  }
-}
-```
-
-### EC2 Instance with IAM Role
-
-```hcl
-module "ec2_iam" {
-  source = "./ec2-module"
-
-  instance_name = "iam-instance"
-  instance_type = "t3.micro"
-  subnet_id     = "subnet-12345678"
-
-  # Create IAM role
-  create_iam_role = true
-  iam_policy_statements = [
-    {
-      Effect = "Allow"
-      Action = [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:ListBucket"
-      ]
-      Resource = [
-        "arn:aws:s3:::my-bucket",
-        "arn:aws:s3:::my-bucket/*"
+  # Security Groups
+  security_groups = {
+    app = {
+      name = "app"
+      description = "Security group for application"
+      ingress_rules = [
+        {
+          description = "HTTP from ALB"
+          from_port   = 80
+          to_port     = 80
+          protocol    = "tcp"
+          cidr_blocks = ["10.0.0.0/16"]
+        }
       ]
     }
-  ]
-
-  create_security_group = true
-  vpc_id                = "vpc-12345678"
+  }
 
   tags = {
-    Environment = "production"
-    Project     = "my-project"
+    Project     = "my-app"
+    Environment = "dev"
+    Owner       = "devops-team"
   }
 }
 ```
 
-### Multiple EC2 Instances
+### Advanced Example
 
 ```hcl
-module "multiple_ec2" {
-  source = "./ec2-module"
+module "advanced_infrastructure" {
+  source = "./vpc"
 
-  instance_name = "multi-instance"
-  instance_count = 3
-  instance_type = "t3.micro"
-  subnet_id     = "subnet-12345678"
+  name        = "advanced-app"
+  environment = "prod"
 
-  use_latest_ami = true
-  ami_type       = "amazon_linux_2"
+  # VPC Configuration
+  vpc_config = {
+    cidr_block = "10.0.0.0/16"
+    enable_nat_gateway = true
+    single_nat_gateway = false
+    one_nat_gateway_per_az = true
+    enable_vpn_gateway = true
+    enable_flow_log = true
+    flow_log_retention_in_days = 30
+  }
 
-  create_security_group = true
-  vpc_id                = "vpc-12345678"
+  # Subnet Configuration
+  subnet_config = {
+    azs             = ["us-west-2a", "us-west-2b", "us-west-2c"]
+    private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+    public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+    database_subnets = ["10.0.11.0/24", "10.0.12.0/24", "10.0.13.0/24"]
+    elasticache_subnets = ["10.0.21.0/24", "10.0.22.0/24", "10.0.23.0/24"]
+    redshift_subnets = ["10.0.41.0/24", "10.0.42.0/24", "10.0.43.0/24"]
+  }
+
+  # EKS Configuration
+  eks_node_groups = {
+    general = {
+      name           = "general"
+      instance_types = ["t3.large"]
+      capacity_type  = "ON_DEMAND"
+      desired_size   = 3
+      max_size       = 6
+      min_size       = 2
+    }
+    spot = {
+      name           = "spot"
+      instance_types = ["t3.large", "t3a.large"]
+      capacity_type  = "SPOT"
+      desired_size   = 2
+      max_size       = 4
+      min_size       = 1
+    }
+  }
+
+  # Application Load Balancers
+  application_load_balancers = {
+    main = {
+      name = "main"
+      internal = false
+      security_groups = ["alb"]
+      target_group = {
+        port = 80
+        protocol = "HTTP"
+        target_type = "ip"
+        health_check = {
+          enabled = true
+          path = "/health"
+        }
+      }
+      listeners = [
+        {
+          port = 80
+          protocol = "HTTP"
+          default_action = {
+            type = "forward"
+            target_group_arn = "main"
+          }
+        }
+      ]
+    }
+  }
+
+  # RDS Databases
+  rds_instances = {
+    postgres = {
+      name = "postgres"
+      engine = "postgres"
+      engine_version = "15.4"
+      instance_class = "db.r6g.large"
+      allocated_storage = 100
+      storage_encrypted = true
+      db_name = "myapp"
+      username = "postgres"
+      password = "changeme123!"
+      security_group_ids = ["database"]
+      multi_az = true
+    }
+  }
+
+  # ElastiCache
+  elasticache_clusters = {
+    redis = {
+      name = "redis"
+      engine = "redis"
+      node_type = "cache.r6g.large"
+      num_cache_nodes = 1
+      security_group_ids = ["cache"]
+    }
+  }
+
+  # Lambda Functions
+  lambda_functions = {
+    processor = {
+      name = "processor"
+      filename = "lambda_function.zip"
+      handler = "index.handler"
+      runtime = "nodejs18.x"
+      timeout = 300
+      memory_size = 1024
+      subnet_ids = ["private"]
+      security_group_ids = ["lambda"]
+    }
+  }
+
+  # Enable advanced features
+  enable_cluster_autoscaler = true
+  enable_network_policies = true
+  enable_velero_backup = true
 
   tags = {
-    Environment = "production"
-    Project     = "my-project"
+    Project     = "advanced-app"
+    Environment = "prod"
+    Owner       = "platform-team"
   }
 }
 ```
@@ -181,257 +294,209 @@ module "multiple_ec2" {
 | Name | Version |
 |------|---------|
 | terraform | >= 1.0 |
-| aws | >= 5.0 |
+| aws | ~> 5.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| aws | >= 5.0 |
+| aws | ~> 5.0 |
+| kubernetes | n/a |
+| helm | n/a |
 
 ## Inputs
 
-### EC2 Instance Configuration
+### General Variables
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| instance_name | Name of the EC2 instance | `string` | `"ec2-instance"` | no |
-| instance_count | Number of EC2 instances to create | `number` | `1` | no |
-| instance_type | EC2 instance type | `string` | `"t3.micro"` | no |
+| name | Name prefix for all resources | `string` | n/a | yes |
+| environment | Environment name (e.g., dev, staging, prod) | `string` | `"dev"` | no |
+| tags | Common tags to apply to all resources | `map(string)` | `{}` | no |
 
-### AMI Configuration
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| ami_id | AMI ID to use for the EC2 instance | `string` | `null` | no |
-| use_latest_ami | Whether to use the latest Amazon Linux 2 AMI | `bool` | `true` | no |
-| ami_type | Type of AMI to use (amazon_linux_2, ubuntu, custom) | `string` | `"amazon_linux_2"` | no |
-| custom_ami_id | Custom AMI ID to use | `string` | `null` | no |
-| custom_ami_owner | Owner of the custom AMI | `string` | `"self"` | no |
-
-### Network Configuration
+### VPC Configuration
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| vpc_id | VPC ID where the EC2 instance will be created | `string` | `null` | no |
-| subnet_id | Subnet ID where the EC2 instance will be created | `string` | `null` | no |
-| availability_zone | Availability zone for the EC2 instance | `string` | `null` | no |
-| associate_public_ip_address | Whether to associate a public IP address | `bool` | `false` | no |
-| private_ip | Private IP address for the EC2 instance | `string` | `null` | no |
+| vpc_config | VPC configuration | `object` | n/a | yes |
+| subnet_config | Subnet configuration | `object` | n/a | yes |
+| public_subnet_tags | Additional tags for public subnets | `map(string)` | `{}` | no |
+| private_subnet_tags | Additional tags for private subnets | `map(string)` | `{}` | no |
 
-### Security Group Configuration
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| create_security_group | Whether to create a security group for the EC2 instance | `bool` | `true` | no |
-| security_group_ids | List of security group IDs to attach to the EC2 instance | `list(string)` | `[]` | no |
-| security_group_ingress_rules | List of ingress rules for the security group | `list(object)` | See variables.tf | no |
-| security_group_egress_rules | List of egress rules for the security group | `list(object)` | See variables.tf | no |
-
-### Key Pair Configuration
+### EKS Configuration
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| create_key_pair | Whether to create a key pair for SSH access | `bool` | `false` | no |
-| key_name | Name of the key pair to use for SSH access | `string` | `null` | no |
-| public_key | Public key for the key pair | `string` | `null` | no |
+| eks_config | EKS cluster configuration | `object` | `{}` | no |
+| eks_node_groups | EKS node groups configuration | `map(object)` | `{}` | no |
+| eks_fargate_profiles | EKS Fargate profiles configuration | `map(object)` | `{}` | no |
 
-### IAM Configuration
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| create_iam_role | Whether to create an IAM role for the EC2 instance | `bool` | `false` | no |
-| iam_instance_profile_name | Name of the IAM instance profile to use | `string` | `null` | no |
-| iam_policy_statements | List of IAM policy statements for the EC2 role | `list(object)` | `[]` | no |
-
-### Launch Template Configuration
+### Application Load Balancer
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| use_launch_template | Whether to use a launch template instead of direct EC2 instance | `bool` | `false` | no |
-| block_device_mappings | List of block device mappings for the launch template | `list(object)` | `[]` | no |
-| network_interfaces | List of network interfaces for the launch template | `list(object)` | `[]` | no |
+| application_load_balancers | Application Load Balancer configuration | `map(object)` | `{}` | no |
 
-### Auto Scaling Group Configuration
+### Database Services
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| create_autoscaling_group | Whether to create an Auto Scaling Group | `bool` | `false` | no |
-| asg_desired_capacity | Desired capacity for the Auto Scaling Group | `number` | `1` | no |
-| asg_max_size | Maximum size for the Auto Scaling Group | `number` | `3` | no |
-| asg_min_size | Minimum size for the Auto Scaling Group | `number` | `1` | no |
-| asg_subnet_ids | List of subnet IDs for the Auto Scaling Group | `list(string)` | `[]` | no |
-| asg_policies | Auto Scaling policies | `map(object)` | `{}` | no |
-| cloudwatch_alarms | CloudWatch alarms for the Auto Scaling Group | `map(object)` | `{}` | no |
+| rds_instances | RDS database instances configuration | `map(object)` | `{}` | no |
+| elasticache_clusters | ElastiCache clusters configuration | `map(object)` | `{}` | no |
 
-### Block Device Configuration
+### Serverless Computing
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| root_block_device | Root block device configuration | `list(object)` | See variables.tf | no |
-| ebs_block_device | List of EBS block devices | `list(object)` | `[]` | no |
-| ephemeral_block_device | List of ephemeral block devices | `list(object)` | `[]` | no |
+| lambda_functions | Lambda functions with VPC configuration | `map(object)` | `{}` | no |
 
-### User Data Configuration
+### Container Registry
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| user_data | User data script for the EC2 instance | `string` | `null` | no |
-| user_data_replace_on_change | Whether to replace the instance when user data changes | `bool` | `false` | no |
+| ecr_repositories | ECR repositories configuration | `map(object)` | `{}` | no |
 
-### Monitoring Configuration
-
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| enable_detailed_monitoring | Whether to enable detailed monitoring | `bool` | `false` | no |
-| metadata_options | Metadata options for the EC2 instance | `object` | `null` | no |
-
-### Tags
+### Security
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| tags | A map of tags to add to all resources | `map(string)` | `{}` | no |
+| security_groups | Security groups configuration | `map(object)` | `{}` | no |
+
+### Monitoring and Features
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| enable_cloudwatch_container_insights | Enable CloudWatch Container Insights | `bool` | `true` | no |
+| enable_aws_load_balancer_controller | Enable AWS Load Balancer Controller | `bool` | `true` | no |
+| enable_metrics_server | Enable Metrics Server | `bool` | `true` | no |
+| enable_cluster_autoscaler | Enable Cluster Autoscaler | `bool` | `false` | no |
+| enable_network_policies | Enable network policies for EKS | `bool` | `false` | no |
+| network_policy_provider | Network policy provider | `string` | `"calico"` | no |
+| enable_velero_backup | Enable Velero backup solution | `bool` | `false` | no |
+| velero_backup_config | Velero backup configuration | `object` | `{}` | no |
 
 ## Outputs
 
-### EC2 Instance Outputs
+### VPC Outputs
 
 | Name | Description |
 |------|-------------|
-| instance_ids | List of EC2 instance IDs |
-| instance_arns | List of EC2 instance ARNs |
-| instance_public_ips | List of public IP addresses of the EC2 instances |
-| instance_private_ips | List of private IP addresses of the EC2 instances |
-| instance_public_dns | List of public DNS names of the EC2 instances |
-| instance_private_dns | List of private DNS names of the EC2 instances |
+| vpc_id | The ID of the VPC |
+| vpc_cidr_block | The CIDR block of the VPC |
+| vpc_arn | The ARN of the VPC |
+| private_subnets | List of IDs of private subnets |
+| public_subnets | List of IDs of public subnets |
+| database_subnets | List of IDs of database subnets |
+| elasticache_subnets | List of IDs of ElastiCache subnets |
+| redshift_subnets | List of IDs of Redshift subnets |
+| intra_subnets | List of IDs of intra subnets |
 
-### Security Group Outputs
-
-| Name | Description |
-|------|-------------|
-| security_group_id | ID of the security group created for the EC2 instance |
-| security_group_arn | ARN of the security group created for the EC2 instance |
-| security_group_name | Name of the security group created for the EC2 instance |
-
-### Key Pair Outputs
+### Application Load Balancer Outputs
 
 | Name | Description |
 |------|-------------|
-| key_pair_id | ID of the key pair created for the EC2 instance |
-| key_pair_name | Name of the key pair created for the EC2 instance |
-| key_pair_fingerprint | Fingerprint of the key pair created for the EC2 instance |
+| application_load_balancer_ids | Map of Application Load Balancer IDs |
+| application_load_balancer_arns | Map of Application Load Balancer ARNs |
+| application_load_balancer_dns_names | Map of Application Load Balancer DNS names |
+| application_load_balancer_target_group_arns | Map of Application Load Balancer target group ARNs |
 
-### IAM Outputs
-
-| Name | Description |
-|------|-------------|
-| iam_role_id | ID of the IAM role created for the EC2 instance |
-| iam_role_arn | ARN of the IAM role created for the EC2 instance |
-| iam_role_name | Name of the IAM role created for the EC2 instance |
-| iam_instance_profile_id | ID of the IAM instance profile created for the EC2 instance |
-| iam_instance_profile_arn | ARN of the IAM instance profile created for the EC2 instance |
-
-### Launch Template Outputs
+### Database Outputs
 
 | Name | Description |
 |------|-------------|
-| launch_template_id | ID of the launch template created for the EC2 instance |
-| launch_template_arn | ARN of the launch template created for the EC2 instance |
-| launch_template_name | Name of the launch template created for the EC2 instance |
+| rds_instance_ids | Map of RDS instance IDs |
+| rds_instance_endpoints | Map of RDS instance endpoints |
+| rds_subnet_group_id | RDS subnet group ID |
+| elasticache_cluster_ids | Map of ElastiCache cluster IDs |
+| elasticache_cluster_addresses | Map of ElastiCache cluster addresses |
+| elasticache_subnet_group_id | ElastiCache subnet group ID |
 
-### Auto Scaling Group Outputs
-
-| Name | Description |
-|------|-------------|
-| autoscaling_group_id | ID of the Auto Scaling Group created for the EC2 instance |
-| autoscaling_group_arn | ARN of the Auto Scaling Group created for the EC2 instance |
-| autoscaling_group_name | Name of the Auto Scaling Group created for the EC2 instance |
-| autoscaling_group_desired_capacity | Desired capacity of the Auto Scaling Group created for the EC2 instance |
-| autoscaling_group_max_size | Maximum size of the Auto Scaling Group created for the EC2 instance |
-| autoscaling_group_min_size | Minimum size of the Auto Scaling Group created for the EC2 instance |
-
-### Auto Scaling Policy Outputs
+### Lambda Outputs
 
 | Name | Description |
 |------|-------------|
-| autoscaling_policy_ids | IDs of the Auto Scaling policies created for the EC2 instance |
-| autoscaling_policy_arns | ARNs of the Auto Scaling policies created for the EC2 instance |
-| autoscaling_policy_names | Names of the Auto Scaling policies created for the EC2 instance |
+| lambda_function_names | Map of Lambda function names |
+| lambda_function_arns | Map of Lambda function ARNs |
+| lambda_function_invoke_arns | Map of Lambda function invoke ARNs |
+| lambda_role_arns | Map of Lambda IAM role ARNs |
 
-### CloudWatch Alarm Outputs
-
-| Name | Description |
-|------|-------------|
-| cloudwatch_alarm_ids | IDs of the CloudWatch alarms created for the EC2 instance |
-| cloudwatch_alarm_arns | ARNs of the CloudWatch alarms created for the EC2 instance |
-| cloudwatch_alarm_names | Names of the CloudWatch alarms created for the EC2 instance |
-
-### AMI Outputs
+### EKS Outputs
 
 | Name | Description |
 |------|-------------|
-| ami_id | AMI ID used for the EC2 instance |
-| amazon_linux_2_ami_id | Amazon Linux 2 AMI ID |
-| ubuntu_ami_id | Ubuntu AMI ID |
-| custom_ami_id | Custom AMI ID |
+| cluster_id | EKS cluster ID |
+| cluster_endpoint | Endpoint for EKS control plane |
+| cluster_arn | The Amazon Resource Name (ARN) of the cluster |
+| eks_managed_node_groups | Map of EKS managed node groups |
+| fargate_profiles | Map of EKS Fargate profiles |
+
+### ECR Outputs
+
+| Name | Description |
+|------|-------------|
+| ecr_repository_urls | Map of ECR repository URLs |
+| ecr_repository_arns | Map of ECR repository ARNs |
+| ecr_registry_id | Registry ID |
+
+### Security Outputs
+
+| Name | Description |
+|------|-------------|
+| custom_security_group_ids | Map of custom security group IDs |
+| eks_cluster_security_group_id | Security group ID attached to the EKS cluster |
+| eks_nodes_security_group_id | Security group ID attached to the EKS nodes |
 
 ## Examples
 
-See the [examples](./examples) directory for complete usage examples:
+### Basic Example
+See `examples/basic/` for a simple setup with EKS, ECR, and basic security groups.
 
-- [Basic EC2 Instance](./examples/main.tf#L1-L50)
-- [EC2 Instance with Key Pair](./examples/main.tf#L52-L85)
-- [EC2 Instance with IAM Role](./examples/main.tf#L87-L130)
-- [EC2 Instance with Launch Template and Auto Scaling Group](./examples/main.tf#L132-L250)
-- [Multiple EC2 Instances](./examples/main.tf#L252-L290)
+### Advanced Example
+See `examples/advanced/` for a production-ready setup with multiple node groups, RDS, ElastiCache, and advanced monitoring.
 
-## Testing
+### Data Lake Example
+See `examples/data-lake/` for a data lake architecture with Redshift, S3, and data processing workloads.
 
-Run the tests using the provided Makefile:
+## Best Practices
 
-```bash
-# Run all tests
-make test
+### Security
+- Use security groups to restrict traffic between resources
+- Enable VPC Flow Logs for network monitoring
+- Use private subnets for sensitive resources
+- Implement network policies for EKS clusters
+- Use AWS Secrets Manager for sensitive data
 
-# Run examples
-make examples
+### Cost Optimization
+- Use Spot instances for non-critical workloads
+- Enable cluster autoscaler to scale based on demand
+- Use single NAT Gateway for dev environments
+- Implement proper ECR lifecycle policies
+- Use appropriate instance types for workloads
 
-# Validate configuration
-make validate
+### High Availability
+- Deploy resources across multiple Availability Zones
+- Use Multi-AZ RDS instances for production
+- Implement proper backup and recovery strategies
+- Use multiple node groups for EKS clusters
 
-# Format code
-make fmt
-
-# Lint code
-make lint
-```
+### Monitoring
+- Enable CloudWatch Container Insights
+- Use proper logging and monitoring
+- Implement health checks for load balancers
+- Monitor resource utilization and costs
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite
-6. Submit a pull request
+4. Add tests if applicable
+5. Submit a pull request
 
 ## License
 
-This module is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This module is licensed under the MIT License. See the LICENSE file for details.
 
 ## Support
 
-For support and questions, please open an issue in the GitHub repository.
-
-## Changelog
-
-### Version 1.0.0
-- Initial release
-- Support for basic EC2 instances
-- Launch template support
-- Auto Scaling Group support
-- IAM role integration
-- Security group management
-- Key pair management
-- Multiple AMI support
-- Comprehensive outputs
+For issues and questions, please open an issue in the GitHub repository.

@@ -1,725 +1,534 @@
+# ==============================================================================
 # VPC Outputs
+# ==============================================================================
+
 output "vpc_id" {
   description = "The ID of the VPC"
-  value       = aws_vpc.main.id
+  value       = module.vpc.vpc_id
 }
 
 output "vpc_cidr_block" {
   description = "The CIDR block of the VPC"
-  value       = aws_vpc.main.cidr_block
+  value       = module.vpc.vpc_cidr_block
 }
 
 output "vpc_arn" {
   description = "The ARN of the VPC"
-  value       = aws_vpc.main.arn
+  value       = module.vpc.vpc_arn
 }
 
-# Internet Gateway Outputs
-output "internet_gateway_id" {
-  description = "The ID of the Internet Gateway"
-  value       = var.create_igw ? aws_internet_gateway.main[0].id : null
-}
-
-# Subnet Outputs
-output "public_subnet_ids" {
-  description = "List of IDs of public subnets"
-  value       = aws_subnet.public[*].id
-}
-
-output "private_subnet_ids" {
+output "private_subnets" {
   description = "List of IDs of private subnets"
-  value       = aws_subnet.private[*].id
+  value       = module.vpc.private_subnets
 }
 
-output "database_subnet_ids" {
+output "public_subnets" {
+  description = "List of IDs of public subnets"
+  value       = module.vpc.public_subnets
+}
+
+output "database_subnets" {
   description = "List of IDs of database subnets"
-  value       = aws_subnet.database[*].id
+  value       = module.vpc.database_subnets
 }
 
-output "public_subnet_arns" {
-  description = "List of ARNs of public subnets"
-  value       = aws_subnet.public[*].arn
+output "elasticache_subnets" {
+  description = "List of IDs of ElastiCache subnets"
+  value       = module.vpc.elasticache_subnets
+}
+
+output "redshift_subnets" {
+  description = "List of IDs of Redshift subnets"
+  value       = module.vpc.redshift_subnets
+}
+
+output "intra_subnets" {
+  description = "List of IDs of intra subnets"
+  value       = module.vpc.intra_subnets
 }
 
 output "private_subnet_arns" {
   description = "List of ARNs of private subnets"
-  value       = aws_subnet.private[*].arn
+  value       = module.vpc.private_subnet_arns
+}
+
+output "public_subnet_arns" {
+  description = "List of ARNs of public subnets"
+  value       = module.vpc.public_subnet_arns
 }
 
 output "database_subnet_arns" {
   description = "List of ARNs of database subnets"
-  value       = aws_subnet.database[*].arn
+  value       = module.vpc.database_subnet_arns
 }
 
-# Route Table Outputs
-output "public_route_table_ids" {
-  description = "List of IDs of public route tables"
-  value       = aws_route_table.public[*].id
+output "elasticache_subnet_arns" {
+  description = "List of ARNs of ElastiCache subnets"
+  value       = module.vpc.elasticache_subnet_arns
 }
 
-output "private_route_table_ids" {
-  description = "List of IDs of private route tables"
-  value       = aws_route_table.private[*].id
+output "redshift_subnet_arns" {
+  description = "List of ARNs of Redshift subnets"
+  value       = module.vpc.redshift_subnet_arns
 }
 
-# NAT Gateway Outputs
-output "nat_gateway_ids" {
-  description = "List of NAT Gateway IDs"
-  value       = aws_nat_gateway.main[*].id
+output "intra_subnet_arns" {
+  description = "List of ARNs of intra subnets"
+  value       = module.vpc.intra_subnet_arns
+}
+
+output "private_subnets_cidr_blocks" {
+  description = "List of cidr_blocks of private subnets"
+  value       = module.vpc.private_subnets_cidr_blocks
+}
+
+output "public_subnets_cidr_blocks" {
+  description = "List of cidr_blocks of public subnets"
+  value       = module.vpc.public_subnets_cidr_blocks
+}
+
+output "database_subnets_cidr_blocks" {
+  description = "List of cidr_blocks of database subnets"
+  value       = module.vpc.database_subnets_cidr_blocks
+}
+
+output "elasticache_subnets_cidr_blocks" {
+  description = "List of cidr_blocks of ElastiCache subnets"
+  value       = module.vpc.elasticache_subnets_cidr_blocks
+}
+
+output "redshift_subnets_cidr_blocks" {
+  description = "List of cidr_blocks of Redshift subnets"
+  value       = module.vpc.redshift_subnets_cidr_blocks
+}
+
+output "intra_subnets_cidr_blocks" {
+  description = "List of cidr_blocks of intra subnets"
+  value       = module.vpc.intra_subnets_cidr_blocks
 }
 
 output "nat_public_ips" {
   description = "List of public Elastic IPs created for NAT Gateway"
-  value       = aws_eip.nat[*].public_ip
+  value       = module.vpc.nat_public_ips
 }
 
-# Security Group Outputs
-output "default_security_group_id" {
-  description = "The ID of the security group created by default on VPC creation"
-  value       = var.create_default_security_group ? aws_security_group.default[0].id : null
+output "nat_gateway_ids" {
+  description = "List of NAT Gateway IDs"
+  value       = module.vpc.nat_gateway_ids
 }
 
-# Availability Zones
-output "availability_zones" {
-  description = "List of availability zones used"
-  value       = var.availability_zones
+output "nat_instance_ids" {
+  description = "List of NAT Instance IDs"
+  value       = module.vpc.nat_instance_ids
 }
 
-# Network ACLs (if you want to add them later)
-output "vpc_main_route_table_id" {
-  description = "The ID of the main route table associated with this VPC"
-  value       = aws_vpc.main.main_route_table_id
+output "nat_instance_public_ips" {
+  description = "List of public Elastic IPs created for NAT Gateway"
+  value       = module.vpc.nat_instance_public_ips
 }
 
-# IPv6 Outputs
-output "vpc_ipv6_cidr_block" {
-  description = "The IPv6 CIDR block of the VPC"
-  value       = aws_vpc.main.ipv6_cidr_block
+output "igw_id" {
+  description = "The ID of the Internet Gateway"
+  value       = module.vpc.igw_id
 }
 
-output "vpc_ipv6_cidr_block_network_border_group" {
-  description = "The IPv6 CIDR block network border group"
-  value       = aws_vpc.main.ipv6_cidr_block_network_border_group
+output "igw_arn" {
+  description = "The ARN of the Internet Gateway"
+  value       = module.vpc.igw_arn
 }
 
-output "vpc_ipv6_association_id" {
-  description = "The association ID for the IPv6 CIDR block"
-  value       = aws_vpc.main.ipv6_association_id
+output "default_route_table_id" {
+  description = "The ID of the default route table"
+  value       = module.vpc.default_route_table_id
 }
 
-output "public_subnet_ipv6_cidr_blocks" {
-  description = "List of IPv6 CIDR blocks of public subnets"
-  value       = aws_subnet.public[*].ipv6_cidr_block
+output "private_route_table_ids" {
+  description = "List of IDs of private route tables"
+  value       = module.vpc.private_route_table_ids
 }
 
-output "private_subnet_ipv6_cidr_blocks" {
-  description = "List of IPv6 CIDR blocks of private subnets"
-  value       = aws_subnet.private[*].ipv6_cidr_block
+output "public_route_table_ids" {
+  description = "List of IDs of public route tables"
+  value       = module.vpc.public_route_table_ids
 }
 
-output "database_subnet_ipv6_cidr_blocks" {
-  description = "List of IPv6 CIDR blocks of database subnets"
-  value       = aws_subnet.database[*].ipv6_cidr_block
-} 
-
-# EC2 Instance Outputs
-output "instance_ids" {
-  description = "List of EC2 instance IDs"
-  value       = aws_instance.ec2[*].id
-}
-
-output "instance_arns" {
-  description = "List of EC2 instance ARNs"
-  value       = aws_instance.ec2[*].arn
-}
-
-output "instance_public_ips" {
-  description = "List of public IP addresses of the EC2 instances"
-  value       = aws_instance.ec2[*].public_ip
-}
-
-output "instance_private_ips" {
-  description = "List of private IP addresses of the EC2 instances"
-  value       = aws_instance.ec2[*].private_ip
-}
-
-output "instance_public_dns" {
-  description = "List of public DNS names of the EC2 instances"
-  value       = aws_instance.ec2[*].public_dns
-}
-
-output "instance_private_dns" {
-  description = "List of private DNS names of the EC2 instances"
-  value       = aws_instance.ec2[*].private_dns
-}
-
-output "instance_availability_zones" {
-  description = "List of availability zones of the EC2 instances"
-  value       = aws_instance.ec2[*].availability_zone
-}
-
-output "instance_subnet_ids" {
-  description = "List of subnet IDs of the EC2 instances"
-  value       = aws_instance.ec2[*].subnet_id
-}
-
-output "instance_vpc_security_group_ids" {
-  description = "List of VPC security group IDs of the EC2 instances"
-  value       = aws_instance.ec2[*].vpc_security_group_ids
-}
-
-output "instance_root_block_device" {
-  description = "List of root block device configurations of the EC2 instances"
-  value       = aws_instance.ec2[*].root_block_device
-}
-
-output "instance_ebs_block_device" {
-  description = "List of EBS block device configurations of the EC2 instances"
-  value       = aws_instance.ec2[*].ebs_block_device
-}
-
-output "instance_metadata_options" {
-  description = "List of metadata options of the EC2 instances"
-  value       = aws_instance.ec2[*].metadata_options
-}
-
-output "instance_iam_instance_profile" {
-  description = "List of IAM instance profiles of the EC2 instances"
-  value       = aws_instance.ec2[*].iam_instance_profile
-}
-
-output "instance_key_name" {
-  description = "List of key names of the EC2 instances"
-  value       = aws_instance.ec2[*].key_name
-}
-
-output "instance_placement_group" {
-  description = "List of placement groups of the EC2 instances"
-  value       = aws_instance.ec2[*].placement_group
-}
-
-output "instance_tenancy" {
-  description = "List of tenancy configurations of the EC2 instances"
-  value       = aws_instance.ec2[*].tenancy
-}
-
-output "instance_host_id" {
-  description = "List of host IDs of the EC2 instances"
-  value       = aws_instance.ec2[*].host_id
-}
-
-output "instance_cpu_core_count" {
-  description = "List of CPU core counts of the EC2 instances"
-  value       = aws_instance.ec2[*].cpu_core_count
-}
-
-output "instance_cpu_threads_per_core" {
-  description = "List of CPU threads per core of the EC2 instances"
-  value       = aws_instance.ec2[*].cpu_threads_per_core
-}
-
-output "instance_hibernation" {
-  description = "List of hibernation configurations of the EC2 instances"
-  value       = aws_instance.ec2[*].hibernation
-}
-
-output "instance_capacity_reservation_specification" {
-  description = "List of capacity reservation specifications of the EC2 instances"
-  value       = aws_instance.ec2[*].capacity_reservation_specification
-}
-
-output "instance_source_dest_check" {
-  description = "List of source/destination check configurations of the EC2 instances"
-  value       = aws_instance.ec2[*].source_dest_check
-}
-
-output "instance_disable_api_termination" {
-  description = "List of API termination disable configurations of the EC2 instances"
-  value       = aws_instance.ec2[*].disable_api_termination
+output "database_route_table_ids" {
+  description = "List of IDs of database route tables"
+  value       = module.vpc.database_route_table_ids
 }
 
-output "instance_instance_initiated_shutdown_behavior" {
-  description = "List of instance initiated shutdown behaviors of the EC2 instances"
-  value       = aws_instance.ec2[*].instance_initiated_shutdown_behavior
-}
-
-output "instance_monitoring" {
-  description = "List of monitoring configurations of the EC2 instances"
-  value       = aws_instance.ec2[*].monitoring
-}
-
-output "instance_network_interface" {
-  description = "List of network interface configurations of the EC2 instances"
-  value       = aws_instance.ec2[*].network_interface
-}
-
-output "instance_primary_network_interface_id" {
-  description = "List of primary network interface IDs of the EC2 instances"
-  value       = aws_instance.ec2[*].primary_network_interface_id
-}
-
-output "instance_secondary_private_ips" {
-  description = "List of secondary private IP addresses of the EC2 instances"
-  value       = aws_instance.ec2[*].secondary_private_ips
-}
-
-output "instance_secondary_private_ip_address_count" {
-  description = "List of secondary private IP address counts of the EC2 instances"
-  value       = aws_instance.ec2[*].secondary_private_ip_address_count
-}
-
-output "instance_tags" {
-  description = "List of tags of the EC2 instances"
-  value       = aws_instance.ec2[*].tags
-}
-
-output "instance_tags_all" {
-  description = "List of all tags of the EC2 instances"
-  value       = aws_instance.ec2[*].tags_all
-}
-
-# Security Group Outputs
-output "security_group_id" {
-  description = "ID of the security group created for the EC2 instance"
-  value       = var.create_security_group ? aws_security_group.ec2[0].id : null
-}
-
-output "security_group_arn" {
-  description = "ARN of the security group created for the EC2 instance"
-  value       = var.create_security_group ? aws_security_group.ec2[0].arn : null
-}
-
-output "security_group_name" {
-  description = "Name of the security group created for the EC2 instance"
-  value       = var.create_security_group ? aws_security_group.ec2[0].name : null
-}
-
-output "security_group_description" {
-  description = "Description of the security group created for the EC2 instance"
-  value       = var.create_security_group ? aws_security_group.ec2[0].description : null
-}
+# ==============================================================================
+# Application Load Balancer Outputs
+# ==============================================================================
 
-output "security_group_vpc_id" {
-  description = "VPC ID of the security group created for the EC2 instance"
-  value       = var.create_security_group ? aws_security_group.ec2[0].vpc_id : null
+output "application_load_balancer_ids" {
+  description = "Map of Application Load Balancer IDs"
+  value       = { for k, v in aws_lb.application : k => v.id }
 }
 
-output "security_group_owner_id" {
-  description = "Owner ID of the security group created for the EC2 instance"
-  value       = var.create_security_group ? aws_security_group.ec2[0].owner_id : null
+output "application_load_balancer_arns" {
+  description = "Map of Application Load Balancer ARNs"
+  value       = { for k, v in aws_lb.application : k => v.arn }
 }
 
-output "security_group_tags" {
-  description = "Tags of the security group created for the EC2 instance"
-  value       = var.create_security_group ? aws_security_group.ec2[0].tags : null
+output "application_load_balancer_dns_names" {
+  description = "Map of Application Load Balancer DNS names"
+  value       = { for k, v in aws_lb.application : k => v.dns_name }
 }
 
-output "security_group_tags_all" {
-  description = "All tags of the security group created for the EC2 instance"
-  value       = var.create_security_group ? aws_security_group.ec2[0].tags_all : null
+output "application_load_balancer_zone_ids" {
+  description = "Map of Application Load Balancer zone IDs"
+  value       = { for k, v in aws_lb.application : k => v.zone_id }
 }
 
-# Key Pair Outputs
-output "key_pair_id" {
-  description = "ID of the key pair created for the EC2 instance"
-  value       = var.create_key_pair ? aws_key_pair.ec2[0].id : null
+output "application_load_balancer_target_group_arns" {
+  description = "Map of Application Load Balancer target group ARNs"
+  value       = { for k, v in aws_lb_target_group.application : k => v.arn }
 }
 
-output "key_pair_name" {
-  description = "Name of the key pair created for the EC2 instance"
-  value       = var.create_key_pair ? aws_key_pair.ec2[0].key_name : null
+output "application_load_balancer_listener_arns" {
+  description = "Map of Application Load Balancer listener ARNs"
+  value       = { for k, v in aws_lb_listener.application : k => v.arn }
 }
 
-output "key_pair_fingerprint" {
-  description = "Fingerprint of the key pair created for the EC2 instance"
-  value       = var.create_key_pair ? aws_key_pair.ec2[0].fingerprint : null
-}
-
-output "key_pair_tags" {
-  description = "Tags of the key pair created for the EC2 instance"
-  value       = var.create_key_pair ? aws_key_pair.ec2[0].tags : null
-}
-
-output "key_pair_tags_all" {
-  description = "All tags of the key pair created for the EC2 instance"
-  value       = var.create_key_pair ? aws_key_pair.ec2[0].tags_all : null
-}
-
-# IAM Role Outputs
-output "iam_role_id" {
-  description = "ID of the IAM role created for the EC2 instance"
-  value       = var.create_iam_role ? aws_iam_role.ec2[0].id : null
-}
-
-output "iam_role_arn" {
-  description = "ARN of the IAM role created for the EC2 instance"
-  value       = var.create_iam_role ? aws_iam_role.ec2[0].arn : null
-}
-
-output "iam_role_name" {
-  description = "Name of the IAM role created for the EC2 instance"
-  value       = var.create_iam_role ? aws_iam_role.ec2[0].name : null
-}
+# ==============================================================================
+# RDS Outputs
+# ==============================================================================
 
-output "iam_role_unique_id" {
-  description = "Unique ID of the IAM role created for the EC2 instance"
-  value       = var.create_iam_role ? aws_iam_role.ec2[0].unique_id : null
+output "rds_instance_ids" {
+  description = "Map of RDS instance IDs"
+  value       = { for k, v in aws_db_instance.main : k => v.id }
 }
 
-output "iam_role_tags" {
-  description = "Tags of the IAM role created for the EC2 instance"
-  value       = var.create_iam_role ? aws_iam_role.ec2[0].tags : null
+output "rds_instance_arns" {
+  description = "Map of RDS instance ARNs"
+  value       = { for k, v in aws_db_instance.main : k => v.arn }
 }
 
-output "iam_role_tags_all" {
-  description = "All tags of the IAM role created for the EC2 instance"
-  value       = var.create_iam_role ? aws_iam_role.ec2[0].tags_all : null
+output "rds_instance_endpoints" {
+  description = "Map of RDS instance endpoints"
+  value       = { for k, v in aws_db_instance.main : k => v.endpoint }
 }
 
-# IAM Instance Profile Outputs
-output "iam_instance_profile_id" {
-  description = "ID of the IAM instance profile created for the EC2 instance"
-  value       = var.create_iam_role ? aws_iam_instance_profile.ec2[0].id : null
+output "rds_instance_addresses" {
+  description = "Map of RDS instance addresses"
+  value       = { for k, v in aws_db_instance.main : k => v.address }
 }
 
-output "iam_instance_profile_arn" {
-  description = "ARN of the IAM instance profile created for the EC2 instance"
-  value       = var.create_iam_role ? aws_iam_instance_profile.ec2[0].arn : null
+output "rds_instance_ports" {
+  description = "Map of RDS instance ports"
+  value       = { for k, v in aws_db_instance.main : k => v.port }
 }
 
-output "iam_instance_profile_name" {
-  description = "Name of the IAM instance profile created for the EC2 instance"
-  value       = var.create_iam_role ? aws_iam_instance_profile.ec2[0].name : null
+output "rds_subnet_group_id" {
+  description = "RDS subnet group ID"
+  value       = length(var.rds_instances) > 0 ? aws_db_subnet_group.main[0].id : null
 }
 
-output "iam_instance_profile_role" {
-  description = "Role of the IAM instance profile created for the EC2 instance"
-  value       = var.create_iam_role ? aws_iam_instance_profile.ec2[0].role : null
+output "rds_subnet_group_arn" {
+  description = "RDS subnet group ARN"
+  value       = length(var.rds_instances) > 0 ? aws_db_subnet_group.main[0].arn : null
 }
 
-output "iam_instance_profile_tags" {
-  description = "Tags of the IAM instance profile created for the EC2 instance"
-  value       = var.create_iam_role ? aws_iam_instance_profile.ec2[0].tags : null
-}
-
-output "iam_instance_profile_tags_all" {
-  description = "All tags of the IAM instance profile created for the EC2 instance"
-  value       = var.create_iam_role ? aws_iam_instance_profile.ec2[0].tags_all : null
-}
+# ==============================================================================
+# ElastiCache Outputs
+# ==============================================================================
 
-# IAM Role Policy Outputs
-output "iam_role_policy_id" {
-  description = "ID of the IAM role policy created for the EC2 instance"
-  value       = var.create_iam_role && length(var.iam_policy_statements) > 0 ? aws_iam_role_policy.ec2[0].id : null
+output "elasticache_cluster_ids" {
+  description = "Map of ElastiCache cluster IDs"
+  value       = { for k, v in aws_elasticache_cluster.main : k => v.id }
 }
 
-output "iam_role_policy_name" {
-  description = "Name of the IAM role policy created for the EC2 instance"
-  value       = var.create_iam_role && length(var.iam_policy_statements) > 0 ? aws_iam_role_policy.ec2[0].name : null
+output "elasticache_cluster_arns" {
+  description = "Map of ElastiCache cluster ARNs"
+  value       = { for k, v in aws_elasticache_cluster.main : k => v.arn }
 }
 
-output "iam_role_policy_role" {
-  description = "Role of the IAM role policy created for the EC2 instance"
-  value       = var.create_iam_role && length(var.iam_policy_statements) > 0 ? aws_iam_role_policy.ec2[0].role : null
+output "elasticache_cluster_addresses" {
+  description = "Map of ElastiCache cluster addresses"
+  value       = { for k, v in aws_elasticache_cluster.main : k => v.cache_nodes[0].address }
 }
 
-output "iam_role_policy_policy" {
-  description = "Policy of the IAM role policy created for the EC2 instance"
-  value       = var.create_iam_role && length(var.iam_policy_statements) > 0 ? aws_iam_role_policy.ec2[0].policy : null
+output "elasticache_cluster_ports" {
+  description = "Map of ElastiCache cluster ports"
+  value       = { for k, v in aws_elasticache_cluster.main : k => v.port }
 }
 
-# Launch Template Outputs
-output "launch_template_id" {
-  description = "ID of the launch template created for the EC2 instance"
-  value       = var.use_launch_template ? aws_launch_template.ec2[0].id : null
+output "elasticache_subnet_group_id" {
+  description = "ElastiCache subnet group ID"
+  value       = length(var.elasticache_clusters) > 0 ? aws_elasticache_subnet_group.main[0].id : null
 }
 
-output "launch_template_arn" {
-  description = "ARN of the launch template created for the EC2 instance"
-  value       = var.use_launch_template ? aws_launch_template.ec2[0].arn : null
+output "elasticache_subnet_group_arn" {
+  description = "ElastiCache subnet group ARN"
+  value       = length(var.elasticache_clusters) > 0 ? aws_elasticache_subnet_group.main[0].arn : null
 }
 
-output "launch_template_name" {
-  description = "Name of the launch template created for the EC2 instance"
-  value       = var.use_launch_template ? aws_launch_template.ec2[0].name : null
-}
-
-output "launch_template_latest_version" {
-  description = "Latest version of the launch template created for the EC2 instance"
-  value       = var.use_launch_template ? aws_launch_template.ec2[0].latest_version : null
-}
+# ==============================================================================
+# Lambda Outputs
+# ==============================================================================
 
-output "launch_template_default_version" {
-  description = "Default version of the launch template created for the EC2 instance"
-  value       = var.use_launch_template ? aws_launch_template.ec2[0].default_version : null
+output "lambda_function_names" {
+  description = "Map of Lambda function names"
+  value       = { for k, v in aws_lambda_function.vpc_lambda : k => v.function_name }
 }
 
-output "launch_template_tags" {
-  description = "Tags of the launch template created for the EC2 instance"
-  value       = var.use_launch_template ? aws_launch_template.ec2[0].tags : null
+output "lambda_function_arns" {
+  description = "Map of Lambda function ARNs"
+  value       = { for k, v in aws_lambda_function.vpc_lambda : k => v.arn }
 }
 
-output "launch_template_tags_all" {
-  description = "All tags of the launch template created for the EC2 instance"
-  value       = var.use_launch_template ? aws_launch_template.ec2[0].tags_all : null
+output "lambda_function_invoke_arns" {
+  description = "Map of Lambda function invoke ARNs"
+  value       = { for k, v in aws_lambda_function.vpc_lambda : k => v.invoke_arn }
 }
 
-# Auto Scaling Group Outputs
-output "autoscaling_group_id" {
-  description = "ID of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].id : null
+output "lambda_role_arns" {
+  description = "Map of Lambda IAM role ARNs"
+  value       = { for k, v in aws_iam_role.lambda_role : k => v.arn }
 }
 
-output "autoscaling_group_arn" {
-  description = "ARN of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].arn : null
-}
+# ==============================================================================
+# Security Groups Outputs
+# ==============================================================================
 
-output "autoscaling_group_name" {
-  description = "Name of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].name : null
+output "eks_cluster_security_group_id" {
+  description = "Security group ID attached to the EKS cluster"
+  value       = length(var.eks_node_groups) > 0 ? aws_security_group.eks_cluster[0].id : null
 }
 
-output "autoscaling_group_desired_capacity" {
-  description = "Desired capacity of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].desired_capacity : null
+output "eks_nodes_security_group_id" {
+  description = "Security group ID attached to the EKS nodes"
+  value       = length(var.eks_node_groups) > 0 ? aws_security_group.eks_nodes[0].id : null
 }
 
-output "autoscaling_group_max_size" {
-  description = "Maximum size of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].max_size : null
+output "custom_security_group_ids" {
+  description = "Map of custom security group IDs"
+  value       = { for k, v in aws_security_group.custom : k => v.id }
 }
 
-output "autoscaling_group_min_size" {
-  description = "Minimum size of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].min_size : null
-}
+# ==============================================================================
+# EKS Outputs
+# ==============================================================================
 
-output "autoscaling_group_health_check_grace_period" {
-  description = "Health check grace period of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].health_check_grace_period : null
+output "cluster_id" {
+  description = "EKS cluster ID"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_id : null
 }
 
-output "autoscaling_group_health_check_type" {
-  description = "Health check type of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].health_check_type : null
+output "cluster_arn" {
+  description = "The Amazon Resource Name (ARN) of the cluster"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_arn : null
 }
 
-output "autoscaling_group_vpc_zone_identifier" {
-  description = "VPC zone identifier of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].vpc_zone_identifier : null
+output "cluster_certificate_authority_data" {
+  description = "Base64 encoded certificate data required to communicate with the cluster"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_certificate_authority_data : null
 }
 
-output "autoscaling_group_target_group_arns" {
-  description = "Target group ARNs of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].target_group_arns : null
+output "cluster_endpoint" {
+  description = "Endpoint for EKS control plane"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_endpoint : null
 }
 
-output "autoscaling_group_load_balancers" {
-  description = "Load balancers of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].load_balancers : null
+output "cluster_iam_role_name" {
+  description = "IAM role name associated with EKS cluster"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_iam_role_name : null
 }
 
-output "autoscaling_group_placement_group" {
-  description = "Placement group of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].placement_group : null
+output "cluster_iam_role_arn" {
+  description = "IAM role ARN associated with EKS cluster"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_iam_role_arn : null
 }
 
-output "autoscaling_group_service_linked_role_arn" {
-  description = "Service linked role ARN of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].service_linked_role_arn : null
+output "cluster_oidc_issuer_url" {
+  description = "The URL on the EKS cluster for the OpenID Connect identity provider"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_oidc_issuer_url : null
 }
 
-output "autoscaling_group_max_instance_lifetime" {
-  description = "Maximum instance lifetime of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].max_instance_lifetime : null
+output "cluster_platform_version" {
+  description = "Platform version for the cluster"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_platform_version : null
 }
 
-output "autoscaling_group_capacity_rebalance" {
-  description = "Capacity rebalance of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].capacity_rebalance : null
+output "cluster_status" {
+  description = "Status of the EKS cluster"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_status : null
 }
 
-output "autoscaling_group_warm_pool" {
-  description = "Warm pool configuration of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].warm_pool : null
+output "cluster_primary_security_group_id" {
+  description = "Cluster security group that was created by Amazon EKS for the cluster"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_primary_security_group_id : null
 }
 
-output "autoscaling_group_mixed_instances_policy" {
-  description = "Mixed instances policy of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].mixed_instances_policy : null
+output "cluster_security_group_id" {
+  description = "Security group ID attached to the EKS cluster"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_security_group_id : null
 }
 
-output "autoscaling_group_instance_refresh" {
-  description = "Instance refresh configuration of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].instance_refresh : null
+output "cluster_security_group_arn" {
+  description = "Amazon Resource Name (ARN) of the cluster security group"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_security_group_arn : null
 }
 
-output "autoscaling_group_tags" {
-  description = "Tags of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].tags : null
+output "node_security_group_id" {
+  description = "ID of the node shared security group"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].node_security_group_id : null
 }
 
-output "autoscaling_group_tags_all" {
-  description = "All tags of the Auto Scaling Group created for the EC2 instance"
-  value       = var.create_autoscaling_group ? aws_autoscaling_group.ec2[0].tags_all : null
+output "node_security_group_arn" {
+  description = "Amazon Resource Name (ARN) of the node shared security group"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].node_security_group_arn : null
 }
 
-# Auto Scaling Policy Outputs
-output "autoscaling_policy_ids" {
-  description = "IDs of the Auto Scaling policies created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.asg_policies) > 0 ? [for policy in aws_autoscaling_policy.ec2 : policy.id] : []
+output "cluster_cloudwatch_log_group_arn" {
+  description = "Amazon Resource Name (ARN) of CloudWatch log group"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_cloudwatch_log_group_arn : null
 }
 
-output "autoscaling_policy_arns" {
-  description = "ARNs of the Auto Scaling policies created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.asg_policies) > 0 ? [for policy in aws_autoscaling_policy.ec2 : policy.arn] : []
+output "cluster_cloudwatch_log_group_name" {
+  description = "Name of CloudWatch log group"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_cloudwatch_log_group_name : null
 }
 
-output "autoscaling_policy_names" {
-  description = "Names of the Auto Scaling policies created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.asg_policies) > 0 ? [for policy in aws_autoscaling_policy.ec2 : policy.name] : []
+output "eks_managed_node_groups" {
+  description = "Map of EKS managed node groups"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].eks_managed_node_groups : {}
 }
 
-output "autoscaling_policy_autoscaling_group_names" {
-  description = "Auto Scaling group names of the Auto Scaling policies created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.asg_policies) > 0 ? [for policy in aws_autoscaling_policy.ec2 : policy.autoscaling_group_name] : []
+output "eks_managed_node_groups_autoscaling_group_names" {
+  description = "List of the autoscaling group names created by EKS managed node groups"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].eks_managed_node_groups_autoscaling_group_names : []
 }
 
-output "autoscaling_policy_adjustment_types" {
-  description = "Adjustment types of the Auto Scaling policies created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.asg_policies) > 0 ? [for policy in aws_autoscaling_policy.ec2 : policy.adjustment_type] : []
+output "fargate_profiles" {
+  description = "Map of EKS Fargate profiles"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].fargate_profiles : {}
 }
 
-output "autoscaling_policy_scaling_adjustments" {
-  description = "Scaling adjustments of the Auto Scaling policies created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.asg_policies) > 0 ? [for policy in aws_autoscaling_policy.ec2 : policy.scaling_adjustment] : []
+output "fargate_profile_ids" {
+  description = "EKS Cluster's Fargate Profile IDs"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].fargate_profile_ids : []
 }
 
-output "autoscaling_policy_cooldowns" {
-  description = "Cooldowns of the Auto Scaling policies created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.asg_policies) > 0 ? [for policy in aws_autoscaling_policy.ec2 : policy.cooldown] : []
+output "fargate_profile_arns" {
+  description = "EKS Cluster's Fargate Profile ARNs"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].fargate_profile_arns : []
 }
 
-output "autoscaling_policy_metric_aggregation_types" {
-  description = "Metric aggregation types of the Auto Scaling policies created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.asg_policies) > 0 ? [for policy in aws_autoscaling_policy.ec2 : policy.metric_aggregation_type] : []
+output "fargate_profile_statuses" {
+  description = "EKS Cluster's Fargate Profile statuses"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].fargate_profile_statuses : []
 }
 
-output "autoscaling_policy_min_adjustment_magnitudes" {
-  description = "Minimum adjustment magnitudes of the Auto Scaling policies created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.asg_policies) > 0 ? [for policy in aws_autoscaling_policy.ec2 : policy.min_adjustment_magnitude] : []
-}
+# ==============================================================================
+# ECR Outputs
+# ==============================================================================
 
-output "autoscaling_policy_step_adjustments" {
-  description = "Step adjustments of the Auto Scaling policies created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.asg_policies) > 0 ? [for policy in aws_autoscaling_policy.ec2 : policy.step_adjustment] : []
+output "ecr_repository_urls" {
+  description = "Map of ECR repository URLs"
+  value       = { for k, v in aws_ecr_repository.repositories : k => v.repository_url }
 }
 
-output "autoscaling_policy_target_tracking_configurations" {
-  description = "Target tracking configurations of the Auto Scaling policies created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.asg_policies) > 0 ? [for policy in aws_autoscaling_policy.ec2 : policy.target_tracking_configuration] : []
+output "ecr_repository_arns" {
+  description = "Map of ECR repository ARNs"
+  value       = { for k, v in aws_ecr_repository.repositories : k => v.arn }
 }
 
-# CloudWatch Alarm Outputs
-output "cloudwatch_alarm_ids" {
-  description = "IDs of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.id] : []
+output "ecr_repository_names" {
+  description = "Map of ECR repository names"
+  value       = { for k, v in aws_ecr_repository.repositories : k => v.name }
 }
 
-output "cloudwatch_alarm_arns" {
-  description = "ARNs of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.arn] : []
+output "ecr_registry_id" {
+  description = "Registry ID"
+  value       = length(aws_ecr_repository.repositories) > 0 ? aws_ecr_repository.repositories[keys(aws_ecr_repository.repositories)[0]].registry_id : null
 }
 
-output "cloudwatch_alarm_names" {
-  description = "Names of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.alarm_name] : []
+output "ecr_registry_url" {
+  description = "Registry URL"
+  value       = length(aws_ecr_repository.repositories) > 0 ? "${aws_ecr_repository.repositories[keys(aws_ecr_repository.repositories)[0]].registry_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com" : null
 }
 
-output "cloudwatch_alarm_comparison_operators" {
-  description = "Comparison operators of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.comparison_operator] : []
-}
+# ==============================================================================
+# Kubernetes Configuration Outputs
+# ==============================================================================
 
-output "cloudwatch_alarm_evaluation_periods" {
-  description = "Evaluation periods of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.evaluation_periods] : []
+output "kubeconfig" {
+  description = "Base64 encoded kubeconfig"
+  value       = length(var.eks_node_groups) > 0 ? base64encode(module.eks[0].kubeconfig) : null
+  sensitive   = true
 }
 
-output "cloudwatch_alarm_metric_names" {
-  description = "Metric names of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.metric_name] : []
+output "kubeconfig_filename" {
+  description = "The filename of the generated kubectl config"
+  value       = length(var.eks_node_groups) > 0 ? module.eks[0].kubeconfig_filename : null
 }
 
-output "cloudwatch_alarm_namespaces" {
-  description = "Namespaces of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.namespace] : []
-}
+# ==============================================================================
+# Helm Release Outputs
+# ==============================================================================
 
-output "cloudwatch_alarm_periods" {
-  description = "Periods of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.period] : []
+output "cloudwatch_container_insights_status" {
+  description = "Status of CloudWatch Container Insights Helm release"
+  value       = var.enable_cloudwatch_container_insights && length(var.eks_node_groups) > 0 ? helm_release.cloudwatch_container_insights[0].status : null
 }
 
-output "cloudwatch_alarm_statistics" {
-  description = "Statistics of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.statistic] : []
+output "aws_load_balancer_controller_status" {
+  description = "Status of AWS Load Balancer Controller Helm release"
+  value       = var.enable_aws_load_balancer_controller && length(var.eks_node_groups) > 0 ? helm_release.aws_load_balancer_controller[0].status : null
 }
 
-output "cloudwatch_alarm_thresholds" {
-  description = "Thresholds of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.threshold] : []
+output "metrics_server_status" {
+  description = "Status of Metrics Server Helm release"
+  value       = var.enable_metrics_server && length(var.eks_node_groups) > 0 ? helm_release.metrics_server[0].status : null
 }
 
-output "cloudwatch_alarm_alarm_descriptions" {
-  description = "Alarm descriptions of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.alarm_description] : []
+output "cluster_autoscaler_status" {
+  description = "Status of Cluster Autoscaler Helm release"
+  value       = var.enable_cluster_autoscaler && length(var.eks_node_groups) > 0 ? helm_release.cluster_autoscaler[0].status : null
 }
 
-output "cloudwatch_alarm_alarm_actions" {
-  description = "Alarm actions of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.alarm_actions] : []
+output "calico_status" {
+  description = "Status of Calico Helm release"
+  value       = var.enable_network_policies && var.network_policy_provider == "calico" && length(var.eks_node_groups) > 0 ? helm_release.calico[0].status : null
 }
 
-output "cloudwatch_alarm_ok_actions" {
-  description = "OK actions of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.ok_actions] : []
+output "cilium_status" {
+  description = "Status of Cilium Helm release"
+  value       = var.enable_network_policies && var.network_policy_provider == "cilium" && length(var.eks_node_groups) > 0 ? helm_release.cilium[0].status : null
 }
 
-output "cloudwatch_alarm_insufficient_data_actions" {
-  description = "Insufficient data actions of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.insufficient_data_actions] : []
+output "velero_status" {
+  description = "Status of Velero Helm release"
+  value       = var.enable_velero_backup && length(var.eks_node_groups) > 0 ? helm_release.velero[0].status : null
 }
 
-output "cloudwatch_alarm_dimensions" {
-  description = "Dimensions of the CloudWatch alarms created for the EC2 instance"
-  value       = var.create_autoscaling_group && length(var.cloudwatch_alarms) > 0 ? [for alarm in aws_cloudwatch_metric_alarm.ec2 : alarm.dimensions] : []
-}
+# ==============================================================================
+# Common Outputs
+# ==============================================================================
 
-# AMI Outputs
-output "ami_id" {
-  description = "AMI ID used for the EC2 instance"
-  value       = local.ami_id
+output "tags" {
+  description = "A map of tags assigned to the resource"
+  value       = local.common_tags
 }
 
-output "amazon_linux_2_ami_id" {
-  description = "Amazon Linux 2 AMI ID"
-  value       = var.use_latest_ami ? data.aws_ami.amazon_linux_2[0].id : null
+output "region" {
+  description = "AWS region"
+  value       = data.aws_region.current.name
 }
 
-output "ubuntu_ami_id" {
-  description = "Ubuntu AMI ID"
-  value       = var.ami_type == "ubuntu" ? data.aws_ami.ubuntu[0].id : null
+output "account_id" {
+  description = "AWS account ID"
+  value       = data.aws_caller_identity.current.account_id
 }
 
-output "custom_ami_id" {
-  description = "Custom AMI ID"
-  value       = var.custom_ami_id != null ? data.aws_ami.custom[0].id : null
+output "caller_arn" {
+  description = "ARN of the caller"
+  value       = data.aws_caller_identity.current.arn
 }
 
-# Local Values Outputs
-output "local_ami_id" {
-  description = "Local AMI ID value"
-  value       = local.ami_id
+output "caller_user" {
+  description = "Unique identifier of the calling entity"
+  value       = data.aws_caller_identity.current.user_id
 } 
