@@ -16,6 +16,26 @@ A comprehensive Terraform module for creating AWS VPC infrastructure with integr
 - **Backup & Recovery**: Velero backup solution for Kubernetes resources
 - **Network Policies**: Support for Calico and Cilium network policies
 
+## Resource Map
+
+| Resource Type | Service | Description |
+|--------------|---------|-------------|
+| VPC | AWS VPC | Main Virtual Private Cloud |
+| Subnets | AWS VPC | Public, Private, Database, ElastiCache, and Redshift subnets |
+| Internet Gateway | AWS VPC | Internet access for public subnets |
+| NAT Gateway | AWS VPC | Internet access for private subnets |
+| Route Tables | AWS VPC | Traffic routing rules for subnets |
+| Security Groups | AWS VPC | Network security rules |
+| EKS Cluster | AWS EKS | Managed Kubernetes cluster |
+| EKS Node Groups | AWS EKS | EC2 instances for Kubernetes workloads |
+| Application Load Balancer | AWS ELB | Load balancer for applications |
+| RDS Instances | AWS RDS | Managed database instances |
+| ElastiCache Clusters | AWS ElastiCache | In-memory caching |
+| Lambda Functions | AWS Lambda | Serverless compute |
+| ECR Repositories | AWS ECR | Container image registry |
+| CloudWatch Logs | AWS CloudWatch | Log management and monitoring |
+| IAM Roles | AWS IAM | Access control and permissions |
+
 ## Architecture
 
 ```
@@ -293,16 +313,17 @@ module "advanced_infrastructure" {
 
 | Name | Version |
 |------|---------|
-| terraform | >= 1.0 |
-| aws | ~> 5.0 |
+| terraform | >= 1.13.0 |
+| aws | ~> 6.2.0 |
+| terragrunt | >= 0.84.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| aws | ~> 5.0 |
-| kubernetes | n/a |
-| helm | n/a |
+| aws | ~> 6.2.0 |
+| kubernetes | >= 2.24.0 |
+| helm | >= 2.12.0 |
 
 ## Inputs
 
