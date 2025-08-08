@@ -1,47 +1,47 @@
 # ==============================================================================
-# General Variables
+# Core Variables - Required for all deployments
 # ==============================================================================
 
 variable "name" {
-  description = "Name prefix for all resources"
+  description = "Resource name prefix - used for naming all AWS resources"
   type        = string
   validation {
     condition     = can(regex("^[a-zA-Z][a-zA-Z0-9-]*$", var.name))
-    error_message = "Name must start with a letter and contain only alphanumeric characters and hyphens."
+    error_message = "Name must start with letter, contain only alphanumeric chars and hyphens."
   }
 }
 
 variable "environment" {
-  description = "Environment name (e.g., dev, staging, prod)"
+  description = "Deployment environment - affects resource sizing and configuration"
   type        = string
   default     = "dev"
   validation {
     condition     = contains(["dev", "staging", "prod"], var.environment)
-    error_message = "Environment must be one of: dev, staging, prod."
+    error_message = "Environment must be dev, staging, or prod."
   }
 }
 
 variable "tags" {
-  description = "Common tags to apply to all resources"
+  description = "Resource tags applied to all AWS resources"
   type        = map(string)
   default     = {}
 }
 
 # ==============================================================================
-# VPC Variables
+# Network Configuration - VPC and subnet setup
 # ==============================================================================
 
 variable "vpc_config" {
-  description = "VPC configuration"
+  description = "VPC network configuration - controls NAT gateway costs and connectivity"
   type = object({
     cidr_block           = string
     enable_dns_hostnames = optional(bool, true)
     enable_dns_support   = optional(bool, true)
     enable_nat_gateway   = optional(bool, true)
-    single_nat_gateway   = optional(bool, false)
-    one_nat_gateway_per_az = optional(bool, false)
+    single_nat_gateway   = optional(bool, false)  # Set true for dev to save costs
+    one_nat_gateway_per_az = optional(bool, false)  # Set true for prod HA
     enable_vpn_gateway   = optional(bool, false)
-    enable_flow_log      = optional(bool, false)
+    enable_flow_log      = optional(bool, false)  # Enable for security auditing
     flow_log_retention_in_days = optional(number, 7)
     # Enhanced VPC configuration options
     enable_ipv6 = optional(bool, false)

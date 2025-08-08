@@ -1,49 +1,49 @@
 # ==============================================================================
-# VPC Outputs
+# Network Information - For integration with other modules and services
 # ==============================================================================
 
 output "vpc_id" {
-  description = "The ID of the VPC"
+  description = "VPC identifier for resource placement and security group rules"
   value       = module.vpc.vpc_id
 }
 
 output "vpc_cidr_block" {
-  description = "The CIDR block of the VPC"
+  description = "VPC CIDR block for security group and routing configuration"
   value       = module.vpc.vpc_cidr_block
 }
 
 output "vpc_arn" {
-  description = "The ARN of the VPC"
+  description = "VPC ARN for IAM policies and resource-based permissions"
   value       = module.vpc.vpc_arn
 }
 
 output "private_subnets" {
-  description = "List of IDs of private subnets"
+  description = "Private subnet IDs for application workloads and databases"
   value       = module.vpc.private_subnets
 }
 
 output "public_subnets" {
-  description = "List of IDs of public subnets"
+  description = "Public subnet IDs for load balancers and NAT gateways"
   value       = module.vpc.public_subnets
 }
 
 output "database_subnets" {
-  description = "List of IDs of database subnets"
+  description = "Database subnet IDs for RDS and other data services"
   value       = module.vpc.database_subnets
 }
 
 output "elasticache_subnets" {
-  description = "List of IDs of ElastiCache subnets"
+  description = "Cache subnet IDs for Redis and Memcached clusters"
   value       = module.vpc.elasticache_subnets
 }
 
 output "redshift_subnets" {
-  description = "List of IDs of Redshift subnets"
+  description = "Analytics subnet IDs for data warehouse clusters"
   value       = module.vpc.redshift_subnets
 }
 
 output "intra_subnets" {
-  description = "List of IDs of intra subnets"
+  description = "Isolated subnet IDs for internal-only resources"
   value       = module.vpc.intra_subnets
 }
 
@@ -308,41 +308,41 @@ output "custom_security_group_ids" {
 }
 
 # ==============================================================================
-# EKS Outputs
+# Container Platform - EKS cluster connection details
 # ==============================================================================
 
 output "cluster_id" {
-  description = "EKS cluster ID"
+  description = "EKS cluster identifier for kubectl and AWS CLI operations"
   value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_id : null
 }
 
 output "cluster_arn" {
-  description = "The Amazon Resource Name (ARN) of the cluster"
+  description = "EKS cluster ARN for IAM policies and service integration"
   value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_arn : null
 }
 
 output "cluster_certificate_authority_data" {
-  description = "Base64 encoded certificate data required to communicate with the cluster"
+  description = "Base64 certificate for kubectl configuration"
   value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_certificate_authority_data : null
 }
 
 output "cluster_endpoint" {
-  description = "Endpoint for EKS control plane"
+  description = "EKS API server endpoint for kubectl and CI/CD integration"
   value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_endpoint : null
 }
 
 output "cluster_iam_role_name" {
-  description = "IAM role name associated with EKS cluster"
+  description = "EKS service role name for policy attachments"
   value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_iam_role_name : null
 }
 
 output "cluster_iam_role_arn" {
-  description = "IAM role ARN associated with EKS cluster"
+  description = "EKS service role ARN for cross-account access and integrations"
   value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_iam_role_arn : null
 }
 
 output "cluster_oidc_issuer_url" {
-  description = "The URL on the EKS cluster for the OpenID Connect identity provider"
+  description = "OpenID Connect provider URL for IAM roles for service accounts (IRSA)"
   value       = length(var.eks_node_groups) > 0 ? module.eks[0].cluster_oidc_issuer_url : null
 }
 
@@ -422,31 +422,31 @@ output "fargate_profile_statuses" {
 }
 
 # ==============================================================================
-# ECR Outputs
+# Container Registry - ECR repository access information
 # ==============================================================================
 
 output "ecr_repository_urls" {
-  description = "Map of ECR repository URLs"
+  description = "ECR repository URLs for docker push/pull and CI/CD pipelines"
   value       = { for k, v in aws_ecr_repository.repositories : k => v.repository_url }
 }
 
 output "ecr_repository_arns" {
-  description = "Map of ECR repository ARNs"
+  description = "ECR repository ARNs for IAM policy configuration"
   value       = { for k, v in aws_ecr_repository.repositories : k => v.arn }
 }
 
 output "ecr_repository_names" {
-  description = "Map of ECR repository names"
+  description = "ECR repository names for programmatic access"
   value       = { for k, v in aws_ecr_repository.repositories : k => v.name }
 }
 
 output "ecr_registry_id" {
-  description = "Registry ID"
+  description = "ECR registry ID (AWS account ID) for docker login commands"
   value       = length(aws_ecr_repository.repositories) > 0 ? aws_ecr_repository.repositories[keys(aws_ecr_repository.repositories)[0]].registry_id : null
 }
 
 output "ecr_registry_url" {
-  description = "Registry URL"
+  description = "ECR registry endpoint for docker login and image operations"
   value       = length(aws_ecr_repository.repositories) > 0 ? "${aws_ecr_repository.repositories[keys(aws_ecr_repository.repositories)[0]].registry_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com" : null
 }
 

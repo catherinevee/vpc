@@ -1,5 +1,5 @@
 # ==============================================================================
-# Data Sources
+# Data Sources - Account and region info for resource naming and configuration
 # ==============================================================================
 
 data "aws_caller_identity" "current" {}
@@ -9,7 +9,7 @@ data "aws_availability_zones" "available" {
 }
 
 # ==============================================================================
-# Local Values
+# Locals - Centralized naming and tagging for consistency
 # ==============================================================================
 
 locals {
@@ -20,13 +20,11 @@ locals {
     Project     = "container-infrastructure"
   })
 
-  # VPC Configuration
+  # Naming conventions to avoid resource conflicts across environments
   vpc_name = "${var.name}-vpc"
-  
-  # EKS Configuration
   cluster_name = "${var.name}-eks-cluster"
   
-  # ECR Configuration
+  # ECR repositories need to be created before EKS for proper image pulls
   ecr_repository_names = [for repo in var.ecr_repositories : repo.name]
 }
 
@@ -78,9 +76,11 @@ module "vpc" {
 }
 
 # ==============================================================================
-# Security Groups
+# Security Groups - Network access control for EKS and custom applications
 # ==============================================================================
 
+# EKS cluster control plane security group
+# Handles API server communication with worker nodes
 resource "aws_security_group" "eks_cluster" {
   count = length(var.eks_node_groups) > 0 ? 1 : 0
 
@@ -88,6 +88,7 @@ resource "aws_security_group" "eks_cluster" {
   description = "Security group for EKS cluster"
   vpc_id      = module.vpc.vpc_id
 
+  # All outbound traffic allowed - EKS needs to communicate with various AWS services
   egress {
     from_port   = 0
     to_port     = 0
@@ -104,6 +105,8 @@ resource "aws_security_group" "eks_cluster" {
   }
 }
 
+# EKS worker node security group
+# Allows kubelet and kube-proxy communication
 resource "aws_security_group" "eks_nodes" {
   count = length(var.eks_node_groups) > 0 ? 1 : 0
 
@@ -111,6 +114,7 @@ resource "aws_security_group" "eks_nodes" {
   description = "Security group for EKS nodes"
   vpc_id      = module.vpc.vpc_id
 
+  # HTTPS for API server communication
   ingress {
     description     = "Node groups to cluster API"
     from_port       = 443
@@ -119,6 +123,7 @@ resource "aws_security_group" "eks_nodes" {
     security_groups = [aws_security_group.eks_cluster[0].id]
   }
 
+  # Dynamic port range for kubelet and other services
   ingress {
     description     = "Node groups to cluster API"
     from_port       = 1025
@@ -350,9 +355,11 @@ resource "aws_elasticache_cluster" "main" {
 }
 
 # ==============================================================================
-# Lambda with VPC
+# Lambda with VPC - Event-driven functions with database/cache access
 # ==============================================================================
 
+# Lambda functions deployed in VPC subnets for secure resource access
+# Note: VPC-connected functions have cold start latency due to ENI creation
 resource "aws_lambda_function" "vpc_lambda" {
   for_each = var.lambda_functions
 
@@ -364,6 +371,7 @@ resource "aws_lambda_function" "vpc_lambda" {
   timeout         = each.value.timeout
   memory_size     = each.value.memory_size
 
+  # VPC configuration enables access to RDS, ElastiCache, and other VPC resources
   vpc_config {
     subnet_ids         = each.value.subnet_ids
     security_group_ids = each.value.security_group_ids
@@ -378,6 +386,7 @@ resource "aws_lambda_function" "vpc_lambda" {
   })
 }
 
+# IAM role for Lambda execution with VPC access permissions
 resource "aws_iam_role" "lambda_role" {
   for_each = var.lambda_functions
 
@@ -401,6 +410,7 @@ resource "aws_iam_role" "lambda_role" {
   })
 }
 
+# Basic Lambda execution permissions for CloudWatch logs
 resource "aws_iam_role_policy_attachment" "lambda_basic" {
   for_each = var.lambda_functions
 
@@ -408,6 +418,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# VPC access permissions for ENI management
 resource "aws_iam_role_policy_attachment" "lambda_vpc" {
   for_each = var.lambda_functions
 
@@ -526,7 +537,7 @@ module "eks" {
 }
 
 # ==============================================================================
-# ECR Repositories
+# ECR Repositories - Private container registry with vulnerability scanning
 # ==============================================================================
 
 resource "aws_ecr_repository" "repositories" {
@@ -547,6 +558,8 @@ resource "aws_ecr_repository" "repositories" {
   tags = merge(local.common_tags, each.value.tags)
 }
 
+# Lifecycle policies prevent storage costs from growing unchecked
+# Keep recent images for rollbacks but remove old ones automatically
 resource "aws_ecr_lifecycle_policy" "repositories" {
   for_each = {
     for name, repo in var.ecr_repositories : name => repo
@@ -587,9 +600,11 @@ resource "aws_ecr_lifecycle_policy" "repositories" {
 }
 
 # ==============================================================================
-# ECR Repository Policy
+# ECR Repository Access - Allow EKS nodes to pull images
 # ==============================================================================
 
+# Repository policy allows EKS worker nodes to pull container images
+# Without this, pods will fail with ImagePullBackOff errors
 resource "aws_ecr_repository_policy" "repositories" {
   for_each = var.ecr_repositories
 
